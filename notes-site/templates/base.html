@@ -1,0 +1,49 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}삽구의 서당{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'notes/site.css' %}?v=20261027-9">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="site-header">
+    <a class="brand" href="{% url 'notes:library' %}" aria-label="삽구의 서당 공책 목록">
+      <span class="brand-mark" aria-hidden="true">ㅅ</span>
+      <span><strong>삽구의 서당</strong><small>나의 공부 마당</small></span>
+    </a>
+    {% if user.is_authenticated %}
+      <nav class="top-nav" aria-label="사용자 메뉴">
+        <span>{{ user.username }} 님</span>
+        {% if user.is_staff %}<a href="{% url 'admin:index' %}">관리</a>{% endif %}
+        <form action="{% url 'logout' %}" method="post">
+          {% csrf_token %}
+          <button class="link-button" type="submit">로그아웃</button>
+        </form>
+      </nav>
+    {% endif %}
+  </header>
+
+  {% if messages %}
+    <section class="messages" aria-label="알림" data-auto-dismiss="1500">
+      {% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}
+    </section>
+  {% endif %}
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    document.querySelectorAll('[data-auto-dismiss]').forEach(notification => {
+      const delay = Number(notification.dataset.autoDismiss) || 1500;
+      window.setTimeout(() => {
+        notification.classList.add('is-hiding');
+        window.setTimeout(() => notification.remove(), 220);
+      }, delay);
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

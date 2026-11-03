@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ notebook.title }} · 학습{% endblock %}
+{% block content %}
+<section class="study-shell">
+  <div class="page-heading">
+    <div><a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a><p class="eyebrow">학습</p><h1>{{ notebook.title }}</h1><p class="muted">내가 고른 핵심어를 빈칸으로 바꿔 복습해요.</p></div>
+    <a class="secondary-button" href="{% url 'notes:editor' notebook.id %}">필기로 돌아가기</a>
+  </div>
+  {% if study_pages %}
+    <div class="study-layout">
+      <aside class="study-page-list">
+        <h2>학습할 페이지</h2>
+        {% for page in study_pages %}<button type="button" data-study-index="{{ forloop.counter0 }}"><small>{{ page.chapter.title }}</small>{{ page.title }}</button>{% endfor %}
+      </aside>
+      <article class="quiz-card">
+        <div class="quiz-meta"><span id="quizLocation"></span><span id="quizCount"></span></div>
+        <div id="quizText" class="quiz-text"></div>
+        <div class="quiz-actions"><button id="toggleAnswer" class="primary-button" type="button">정답 보기</button><button id="nextQuiz" class="secondary-button" type="button">다음 문제</button></div>
+      </article>
+    </div>
+  {% else %}
+    <section class="empty-state"><div class="empty-dog" aria-hidden="true">ㅅ</div><h2>아직 만들 수 있는 문제가 없어요</h2><p>필기 화면의 ‘글씨 인식 확인’에서 인식 내용과 핵심어를 저장해 주세요.</p><a class="primary-button" href="{% url 'notes:editor' notebook.id %}">필기에서 준비하기</a></section>
+  {% endif %}
+  {{ study_payload|json_script:"study-data" }}
+</section>
+{% endblock %}
+{% block scripts %}{% if study_pages %}<script src="{% static 'notes/study.js' %}"></script>{% endif %}{% endblock %}

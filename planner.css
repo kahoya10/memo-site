@@ -1,0 +1,2797 @@
+:root{color-scheme:light;--ink:#565047;--soft:#897d6f;--blue:#789ab9;--deep:#607f9f;--paper:#faf5ec;--line:rgba(92,82,70,.2);--shadow:5px 7px 0 rgba(83,68,51,.08)}
+@font-face{font-family:PlannerScheduleFont;src:url("NanumJungHagSaeng.ttf") format("truetype");font-display:swap}
+@font-face{font-family:PlannerChecklistFont;src:url("NanumHimNaeRaNeunMarBoDan.ttf") format("truetype");font-display:swap}
+*{box-sizing:border-box}html,body{min-width:320px;min-height:100%;margin:0}body{min-height:100dvh;color:var(--ink);background:#f5efe5 url("tb.png") center/cover fixed no-repeat;font-family:"Segoe Print","Nanum Pen Script","Malgun Gothic",sans-serif}
+button,input,select,textarea{color:inherit;font:inherit}button{cursor:pointer}[hidden]{display:none!important}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px dashed var(--deep);outline-offset:3px}
+.planner-shell{width:min(1440px,calc(100vw - 48px));min-height:calc(100dvh - 48px);margin:24px auto;padding:clamp(20px,3vw,42px);border:1px solid rgba(105,89,69,.18);border-radius:24px 18px 28px 20px;background:rgba(250,245,236,.84);box-shadow:0 14px 34px rgba(72,58,44,.12)}
+.planner-header{display:grid;grid-template-columns:1fr auto;gap:26px;align-items:end;padding-bottom:22px;border-bottom:1px dashed rgba(96,127,159,.35)}.eyebrow,.card-kicker{margin:0 0 4px;color:var(--deep);font-family:Arial,sans-serif;font-size:.62rem;font-weight:800;letter-spacing:.16em}.brand-title-row{display:flex;align-items:baseline;flex-wrap:wrap;gap:13px}.brand-title-row h1,.brand-period h2,.card-heading h2{margin:0;font-weight:800}.brand-title-row h1{font-size:1.55rem;letter-spacing:-.08em}.brand-period{display:flex;align-items:baseline;gap:7px;white-space:nowrap}.brand-period h2{color:var(--deep);font-family:Arial,sans-serif;font-size:clamp(.95rem,1.8vw,1.3rem)}.brand-period p{margin:0;color:var(--soft);font-size:.68rem}
+.view-switcher{display:flex;gap:5px;padding:4px;border:1px solid rgba(96,127,159,.25);border-radius:10px 8px 11px 9px;background:rgba(255,255,255,.35)}.view-button{min-width:48px;padding:8px 12px;border:0;border-radius:7px 9px 6px 8px;background:transparent;font-size:.9rem;font-weight:800}.view-button.is-active{color:var(--paper);background:var(--deep);box-shadow:2px 3px 0 rgba(83,68,51,.12)}
+.period-toolbar{display:flex;justify-content:flex-end;gap:8px;margin:10px 0}.icon-button,.today-button{border:1px solid rgba(96,127,159,.35);border-radius:9px 7px 10px 8px;background:rgba(255,255,255,.38)}.icon-button{width:35px;height:35px;color:var(--deep);font-family:Arial,sans-serif;font-size:1.7rem;line-height:1}.today-button{margin-left:auto;padding:7px 13px;color:var(--deep);font-size:.75rem;font-weight:800}
+.planner-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,340px);gap:18px;align-items:start}.paper-card,.calendar-card,.week-card,.day-card{border:1px solid rgba(97,82,65,.2);border-radius:15px 11px 17px 13px;background:rgba(255,253,248,.58);box-shadow:var(--shadow)}.calendar-card,.day-card{padding:clamp(12px,1.5vw,20px)}.paper-card{padding:17px}.daily-total-card{display:none;padding:14px 17px;margin-bottom:9px}.daily-total-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}.daily-total-row h2{margin:0;font-size:1rem}.daily-total-row strong{color:var(--deep);font-family:Arial,sans-serif;font-size:1.08rem;white-space:nowrap}
+.weekday-row,.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}.weekday-row{margin-bottom:6px;color:var(--soft);font-size:.72rem;font-weight:800;text-align:center}.weekday-row span:first-child,.calendar-cell:nth-child(7n+1) .day-number{color:#a66e63}.weekday-row span:last-child,.calendar-cell:nth-child(7n) .day-number{color:var(--deep)}.calendar-grid{gap:5px}.calendar-cell{position:relative;min-height:clamp(76px,8vw,125px);padding:8px;border:1px solid rgba(96,127,159,.13);border-radius:9px 7px 10px 8px;background:rgba(255,255,255,.35);cursor:pointer;text-align:left}.calendar-cell.is-other{opacity:.42}.calendar-cell.is-selected{border-color:var(--blue);background:rgba(120,154,185,.16)}.calendar-cell.is-today .day-number{display:inline-grid;min-width:22px;height:22px;place-items:center;border-radius:50%;color:var(--paper);background:var(--deep)}.day-number{display:inline-block;font-family:Arial,sans-serif;font-size:.75rem;font-weight:800}.cell-meta{display:grid;gap:3px;margin-top:10px;color:var(--soft);font-size:.64rem}.cell-meta strong{color:var(--deep);font-size:.68rem}.schedule-preview{display:grid;gap:2px;margin-top:4px;overflow:hidden;color:var(--ink);font-family:PlannerScheduleFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.05rem;line-height:1.12}.schedule-preview-item{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.schedule-preview-item:before{content:"";display:inline-block;width:6px;height:6px;margin:0 4px 0 1px;border-radius:50%;vertical-align:.08em;background:#cb9a7b}.schedule-more{color:var(--deep);font-weight:800}
+.week-grid{display:grid;grid-template-columns:repeat(7,minmax(100px,1fr));gap:8px;overflow-x:auto;padding:2px}.week-card{min-height:245px;padding:13px;cursor:pointer}.week-card.is-selected{border-color:var(--blue);background:rgba(120,154,185,.16)}.week-card header{display:flex;justify-content:space-between;padding-bottom:9px;border-bottom:1px dashed var(--line)}.week-card h3{margin:0;font-size:.78rem}.week-date{color:var(--soft);font-family:Arial,sans-serif;font-size:.72rem}.week-total{display:block;margin:16px 0 9px;color:var(--deep);font-size:1.1rem}.week-card p{margin:4px 0;color:var(--soft);font-size:.68rem}.subject-dots{display:flex;gap:4px;margin-top:15px}.subject-dot{width:9px;height:9px;border-radius:50%}
+.side-column{display:grid;gap:18px}.day-schedule-card,.memo-card,.feedback-card{display:none}.card-heading{display:flex;align-items:start;justify-content:space-between;gap:10px;margin-bottom:13px}.card-heading h2{font-size:1.13rem}.memo-title{margin:0 0 13px;font-size:1.13rem;font-weight:800}.memo-card textarea,.feedback-card textarea{display:block;width:100%;min-height:180px;resize:vertical;padding:10px;border:1px solid rgba(96,127,159,.2);border-radius:7px 9px 6px 8px;outline:0;background:rgba(255,255,255,.55);font-size:.82rem;line-height:1.7}.selected-date{color:var(--soft);font-family:Arial,sans-serif;font-size:.62rem;white-space:nowrap}.todo-list,.day-schedule-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}.schedule-empty{padding:16px 8px;color:var(--soft);font-size:.72rem;text-align:center}.day-schedule-row{padding:7px 8px;border-bottom:1px dashed rgba(96,127,159,.18);font-family:PlannerScheduleFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.35rem}.day-schedule-row.is-done{color:var(--soft);text-decoration:line-through}
+.schedule-preview-row{display:grid;grid-template-columns:20px minmax(0,1fr) 24px;gap:7px;min-height:36px;align-items:center;padding:0 5px 0 7px;border:1px solid rgba(96,127,159,.18);background:rgba(255,255,255,.28)}.schedule-preview-row.is-done .schedule-preview-content{color:var(--soft);text-decoration:line-through}.schedule-check{width:18px;height:18px;accent-color:var(--deep)}.schedule-preview-content{display:flex;align-items:center;min-width:0;gap:8px;padding:5px 0;color:var(--ink);font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.35rem;line-height:.95;transform:translateY(-1px)}.schedule-preview-content>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.schedule-preview-content small{flex:0 0 auto;color:var(--soft);font-size:1.05rem}.schedule-delete{width:24px;height:24px;padding:0;border:0;color:var(--soft);background:transparent;font-family:Arial,sans-serif;font-size:1.2rem}
+.checklist-row{display:grid;grid-template-columns:30px minmax(0,1fr);min-height:36px;border:1px solid rgba(96,127,159,.18);border-bottom:0;background:rgba(255,255,255,.28)}.checklist-row:last-child{border-bottom:1px solid rgba(96,127,159,.18)}.checklist-number{display:grid;place-items:center;border-right:1px solid rgba(96,127,159,.18);color:var(--soft);font-family:Arial,sans-serif;font-size:.7rem}.checklist-content{display:flex;align-items:center;min-width:0;gap:6px;padding:0 6px}.checklist-subject{flex:0 0 66px;min-width:66px;height:28px;padding:0 2px;border:0;outline:0;background:transparent;color:var(--soft);font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:.94rem;line-height:1;transform:translateY(-2px)}.checklist-check{flex:0 0 auto;width:18px;height:18px;accent-color:var(--deep)}.checklist-input{width:100%;min-width:0;padding:4px 1px;border:0;outline:0;background:transparent;color:var(--ink);font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.09rem}
+.study-summary{display:flex;align-items:center;justify-content:center;gap:18px;margin:5px 0 16px}.pie-chart{width:112px;height:112px;border:1px solid rgba(96,127,159,.18);border-radius:50%;background:#e9e2d8;box-shadow:inset 0 0 0 13px rgba(255,253,248,.45)}.study-total{display:grid;gap:3px;color:var(--soft);font-size:.68rem}.study-total strong{color:var(--deep);font-family:Arial,sans-serif;font-size:1.25rem}.subject-picker{display:grid;gap:5px;color:var(--soft);font-size:.7rem}.subject-picker select{width:100%;padding:7px 8px;border:1px solid rgba(96,127,159,.22);border-radius:7px 9px 6px 8px;outline:0;background:rgba(255,255,255,.65)}.study-legend{display:grid;gap:6px;margin-top:15px}.legend-item{display:grid;grid-template-columns:9px 1fr auto;gap:7px;align-items:center;color:var(--soft);font-size:.68rem}.legend-color{width:9px;height:9px;border-radius:50%}.legend-item strong{color:var(--ink);font-family:Arial,sans-serif;font-size:.65rem}.empty-message{margin:16px 0 2px;color:var(--soft);font-size:.7rem;text-align:center}
+.time-grid{position:relative;width:max-content;margin:0 auto}.day-card{overflow:visible}.day-time-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.day-instruction{margin:0;color:var(--soft);font-size:.7rem}.clear-time-button{padding:5px 8px;border:1px solid rgba(96,127,159,.25);border-radius:7px 9px 6px 8px;color:var(--deep);background:rgba(255,255,255,.45);font-size:.65rem}.time-grid-row{display:grid;grid-template-columns:72px max-content;gap:7px;align-items:center}.time-range{color:var(--soft);font-family:Arial,sans-serif;font-size:.65rem;font-weight:700;text-align:right}.slot-grid{display:grid;grid-template-columns:repeat(6,.55cm);border:1px solid rgba(96,127,159,.2)}.time-slot{width:.55cm;height:.55cm;padding:0;border:0;border-right:1px solid rgba(96,127,159,.17);border-bottom:1px solid rgba(96,127,159,.17);background:rgba(255,255,255,.55)}.drawing-surface{position:absolute;z-index:4;cursor:crosshair;touch-action:none;user-select:none;pointer-events:auto}.time-highlight{position:absolute;min-height:1px;border-left:4px solid rgba(73,103,132,.55);border-radius:3px;opacity:.62;box-shadow:0 1px 2px rgba(83,68,51,.16);cursor:pointer}.time-highlight[data-source=timer]{border-left-color:#a66e63;opacity:.8}.time-highlight.is-drawing{opacity:.45;outline:1px dashed var(--deep)}.time-highlight.is-invalid{background:#c87979!important;border-left-color:#a34f4f}.time-highlight-label{position:absolute;inset:2px;display:block;overflow:hidden;color:#403a34;font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.05rem;line-height:1.05;overflow-wrap:anywhere;pointer-events:none}
+.planner-dialog{width:min(420px,calc(100vw - 32px));padding:0;border:1px solid rgba(97,82,65,.2);border-radius:15px 11px 17px 13px;background:transparent;box-shadow:0 18px 45px rgba(72,58,44,.25);color:var(--ink)}.planner-dialog::backdrop{background:rgba(72,58,44,.28);backdrop-filter:blur(2px)}.dialog-card{padding:22px;border-radius:inherit;background:var(--paper)}.dialog-card h2{margin:0 0 4px;font-size:1.2rem}.dialog-date{margin:0 0 16px;color:var(--soft);font-family:Arial,sans-serif;font-size:.7rem}.planner-dialog form{display:grid;gap:9px}.planner-dialog input,.planner-dialog select{width:100%;padding:9px;border:1px solid rgba(96,127,159,.22);border-radius:7px 9px 6px 8px;outline:0;background:rgba(255,255,255,.65)}.planner-dialog input{font-family:PlannerScheduleFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.35rem}.planner-dialog select{font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1.2rem}.dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.dialog-actions button{min-height:34px;border:0;border-radius:7px 9px 6px 8px;color:var(--paper);background:var(--deep);font-weight:800}.dialog-actions button:first-child{color:var(--soft);background:rgba(255,255,255,.65);border:1px solid rgba(96,127,159,.22)}
+@media (min-width:901px){.planner-shell.is-day-view{min-height:calc(100dvh - 48px)}.planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(220px,.8fr) minmax(0,1.8fr) minmax(260px,.9fr);grid-template-rows:auto auto auto}.planner-shell.is-day-view .calendar-area{display:grid;grid-column:3;grid-row:1/span 3;gap:9px;align-content:start}.planner-shell.is-day-view .daily-total-card{display:block}.planner-shell.is-day-view .side-column{display:contents}.planner-shell.is-day-view .todo-card{grid-column:2;grid-row:1/span 3}.planner-shell.is-day-view .day-schedule-card{display:block;grid-column:1;grid-row:1}.planner-shell.is-day-view .memo-card{display:block;grid-column:1;grid-row:2}.planner-shell.is-day-view .study-card{grid-column:1;grid-row:3}}
+@media (max-width:900px){.planner-shell{width:calc(100vw - 18px);min-height:calc(100dvh - 18px);margin:9px auto;padding:16px 11px}.planner-header{grid-template-columns:1fr;gap:14px}.view-switcher{justify-content:center}.planner-layout{grid-template-columns:1fr}.side-column{grid-template-columns:1fr}.planner-shell.is-day-view .daily-total-card,.planner-shell.is-day-view .day-schedule-card,.planner-shell.is-day-view .memo-card{display:block}.planner-shell.is-day-view .calendar-area{order:2}.planner-shell.is-day-view .side-column{order:1}.calendar-cell{min-height:66px;padding:5px}.cell-meta{margin-top:7px;font-size:.56rem}.week-grid{grid-template-columns:repeat(7,112px)}}
+
+.time-resize-handle{position:absolute;top:0;bottom:0;width:9px;z-index:3;cursor:ew-resize}.time-resize-handle[data-resize-edge=start]{left:-5px}.time-resize-handle[data-resize-edge=end]{right:-5px}
+.clear-time-button{display:inline-grid;width:32px;height:30px;place-items:center;padding:0;font-size:1.2rem;line-height:1}
+.time-history-controls{display:flex;gap:5px}
+.planner-shell:not(.is-day-view) .subject-picker{display:none}
+.week-goal-panel{margin-top:10px;padding:13px 15px;border:1px solid rgba(97,82,65,.2);border-radius:15px 11px 17px 13px;background:rgba(255,253,248,.58);box-shadow:var(--shadow)}.week-goal-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.week-goal-heading .card-kicker{margin-bottom:3px}.week-goal-heading h3{margin:0;color:var(--ink);font-size:1.05rem}.week-goal-input{display:flex;align-items:center;gap:5px;color:var(--soft);font-size:.76rem}.week-goal-input input{width:68px;padding:5px 6px;border:1px solid rgba(96,127,159,.22);border-radius:7px 9px 6px 8px;outline:0;background:rgba(255,255,255,.65);color:var(--ink);font-family:Arial,sans-serif;font-size:.85rem;text-align:right}.week-goal-progress-text{margin:10px 0 5px;color:var(--soft);font-family:Arial,sans-serif;font-size:.72rem}.week-goal-track{height:10px;overflow:hidden;border-radius:999px;background:rgba(96,127,159,.16)}.week-goal-bar{display:block;height:100%;border-radius:inherit;background:var(--deep);transition:width .2s ease}
+.week-goal-inputs{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.week-goal-track{overflow:visible}
+.week-card{position:relative}.goal-stamp{position:absolute;z-index:2;object-fit:contain;pointer-events:none;opacity:.86}.calendar-cell .goal-stamp{top:4px;right:4px;width:31px;height:31px}.week-card .goal-stamp{top:7px;right:7px;width:42px;height:42px}
+.calendar-cell.has-goal-stamp .day-number{transform:translateY(-2px)}.calendar-cell.has-goal-stamp .goal-stamp{top:23px;right:4px;width:40px;height:40px}.week-card.has-goal-stamp header{transform:translateY(-2px)}.week-card.has-goal-stamp .goal-stamp{top:43px;right:7px;width:54px;height:54px}.week-card.has-goal-stamp .week-total{margin-top:70px}
+.calendar-cell .day-number{transform:translateY(-9px)}.calendar-cell .cell-meta{margin-top:2px;transform:translateY(-7px)}.calendar-cell .goal-stamp{top:auto;left:auto;right:4px;bottom:0;width:44px;height:44px}.week-card header{transform:translateY(-10px)}.week-card .week-total,.week-card p,.week-card .subject-dots{transform:translateY(-18px)}.week-card .goal-stamp{top:auto;left:auto;right:10px;bottom:0;width:64px;height:64px}.week-card.has-goal-stamp .week-total{margin-top:16px}
+.week-card .goal-stamp,.week-card .goal-stamp-placeholder{position:static;display:block;margin:6px 0 0 auto;width:72px;height:72px}.week-card .goal-stamp-placeholder{visibility:hidden}
+.week-grid{overflow:visible;min-width:0}.week-card{min-width:0;height:245px;overflow:visible;display:flex;flex-direction:column;align-items:stretch}.week-card .goal-stamp,.week-card .goal-stamp-placeholder{flex:0 0 72px;margin:auto 0 0 auto}
+.planner-shell.is-week-view{height:calc(100dvh - 48px);overflow:visible}
+html:has(.planner-shell.is-week-view),body:has(.planner-shell.is-week-view){overflow:hidden}
+html:has(.planner-shell),body:has(.planner-shell){overflow:hidden}
+
+/* Day view: replace the total-study slot with the study log, move the memo
+   into the old study-log slot, and give the new feedback card the old memo
+   slot. The two text cards fill the entire lower row. */
+@media (orientation:landscape){
+  .planner-shell.is-day-view{display:flex;flex-direction:column}
+  .planner-shell.is-day-view .daily-total-card{display:none!important}
+  .planner-shell.is-day-view .planner-layout{flex:1;min-height:0;grid-template-rows:max-content minmax(0,1fr);align-items:stretch}
+  .planner-shell.is-day-view .day-schedule-card{grid-column:1;grid-row:1;display:block;min-width:0}
+  .planner-shell.is-day-view .study-card{grid-column:2;grid-row:1;display:block;min-width:0}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .feedback-card{grid-column:2;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .todo-card{grid-column:3;grid-row:1 / span 2;min-width:0}
+  .planner-shell.is-day-view #dayView{grid-column:4;grid-row:1 / span 2;min-width:0}
+  .planner-shell.is-day-view .memo-card textarea,.planner-shell.is-day-view .feedback-card textarea{flex:1;height:auto;min-height:0;resize:none}
+}
+
+/* Pen-only memo and feedback editor.  The canvas and textarea occupy the
+   same field so switching modes never changes the card layout. */
+.planner-shell .planner-ink-editor{
+  position:relative!important;
+  grid-column:2!important;
+  grid-row:1 / span 2!important;
+  align-self:stretch!important;
+  min-width:0!important;
+  min-height:0!important;
+  width:100%!important;
+  height:100%!important;
+  flex:1 1 auto!important;
+}
+.planner-shell .memo-card,
+.planner-shell .feedback-card{position:relative!important}
+.planner-shell .planner-ink-editor textarea,
+.planner-shell .planner-ink-canvas{
+  position:absolute!important;
+  inset:0!important;
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  box-sizing:border-box!important;
+}
+.planner-shell .planner-ink-editor textarea{
+  resize:none!important;
+}
+.planner-shell .planner-ink-canvas{
+  cursor:crosshair;
+  touch-action:none;
+  background:rgba(255,255,255,.55);
+  border:1px solid rgba(96,127,159,.2);
+  border-radius:7px 9px 6px 8px;
+}
+.planner-shell .planner-ink-controls{
+  position:absolute!important;
+  z-index:8;
+  top:8px;
+  right:8px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+  padding:4px;
+  border:1px solid rgba(96,127,159,.22);
+  border-radius:9px;
+  background:rgba(255,253,248,.94);
+  box-shadow:0 3px 10px rgba(83,68,51,.12);
+}
+.planner-shell .planner-ink-controls[hidden],
+.planner-shell .planner-ink-palette[hidden],
+.planner-shell .planner-ink-canvas[hidden],
+.planner-shell .planner-ink-editor textarea[hidden]{display:none!important}
+.planner-shell .planner-ink-mode,
+.planner-shell .planner-palette-button,
+.planner-shell .planner-ink-action,
+.planner-shell .planner-palette-option,
+.planner-shell .planner-color-swatch{
+  border:0;
+  font:inherit;
+  cursor:pointer;
+}
+.planner-shell .planner-ink-mode{
+  padding:3px 7px;
+  border-radius:6px;
+  background:transparent;
+  color:var(--soft);
+  font-size:.68rem;
+}
+.planner-shell .planner-ink-mode.is-active{
+  background:var(--deep);
+  color:#fff;
+}
+.planner-shell .planner-ink-palette{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.planner-shell .planner-palette-menu{position:relative}
+.planner-shell .planner-palette-button,
+.planner-shell .planner-ink-action{
+  min-width:24px;
+  height:24px;
+  padding:2px 5px;
+  border-radius:6px;
+  background:rgba(96,127,159,.1);
+  color:var(--deep);
+  font-size:.66rem;
+}
+.planner-shell .planner-palette-popup{
+  position:absolute;
+  top:calc(100% + 5px);
+  right:0;
+  z-index:10;
+  display:none;
+  min-width:78px;
+  padding:4px;
+  border:1px solid rgba(96,127,159,.22);
+  border-radius:8px;
+  background:#fffdf8;
+  box-shadow:0 4px 12px rgba(83,68,51,.16);
+}
+.planner-shell .planner-palette-popup.is-open{display:grid}
+.planner-shell .planner-palette-option{
+  padding:4px 7px;
+  border-radius:5px;
+  background:transparent;
+  color:var(--deep);
+  text-align:left;
+  font-size:.65rem;
+}
+.planner-shell .planner-palette-option:hover,
+.planner-shell .planner-palette-option.is-selected{background:rgba(96,127,159,.12)}
+.planner-shell .planner-palette-colors{display:flex;align-items:center;gap:3px}
+.planner-shell .planner-color-swatch{
+  width:16px;
+  height:16px;
+  padding:0;
+  border:2px solid transparent;
+  border-radius:50%;
+  box-shadow:0 0 0 1px rgba(83,68,51,.15);
+}
+.planner-shell .planner-color-swatch.is-selected{border-color:#fff;box-shadow:0 0 0 2px var(--deep)}
+
+@media (orientation:landscape){
+  .planner-shell.is-day-view .planner-ink-editor{height:auto!important}
+}
+
+@media (max-width:900px){
+  .planner-shell .planner-ink-editor{grid-column:auto!important;grid-row:auto!important;}
+}
+
+/* Keep portrait layouts stable across different phone aspect ratios. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell{
+    padding:clamp(10px,3vw,16px) clamp(8px,3vw,16px)!important;
+  }
+  .planner-shell .planner-header{
+    gap:clamp(10px,3vw,14px)!important;
+    padding-bottom:clamp(12px,3vw,16px)!important;
+  }
+  .planner-shell.is-month-view .planner-layout{
+    margin-top:clamp(8px,3vw,14px)!important;
+  }
+  .planner-shell.is-month-view .calendar-grid{
+    gap:clamp(3px,1vw,5px)!important;
+  }
+  .planner-shell.is-month-view .calendar-cell{
+    min-height:clamp(64px,19vw,82px)!important;
+    padding:clamp(4px,1.5vw,7px)!important;
+  }
+  .planner-shell.is-month-view .calendar-cell .goal-stamp{
+    width:clamp(30px,9vw,38px)!important;
+    height:clamp(30px,9vw,38px)!important;
+    right:clamp(1px,1vw,3px)!important;
+    bottom:clamp(1px,1vw,3px)!important;
+  }
+  .planner-shell.is-month-view .cell-meta,
+  .planner-shell.is-month-view .schedule-preview{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .planner-shell.is-month-view .schedule-preview{
+    max-height:2.35em!important;
+    font-size:clamp(.78rem,3vw,1rem)!important;
+  }
+  .planner-shell.is-week-view .week-card{
+    min-height:clamp(120px,31vw,170px)!important;
+  }
+  .planner-shell.is-day-view .checklist-content{
+    grid-template-columns:minmax(0,1fr) clamp(44px,14vw,54px) 18px!important;
+  }
+  .planner-shell.is-day-view .checklist-subject{
+    width:clamp(44px,14vw,54px)!important;
+    max-width:clamp(44px,14vw,54px)!important;
+  }
+  .planner-shell.is-day-view .paper-card,
+  .planner-shell.is-day-view .day-card,
+  .planner-shell.is-month-view .paper-card,
+  .planner-shell.is-month-view .calendar-card,
+  .planner-shell.is-week-view .paper-card,
+  .planner-shell.is-week-view .week-card{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}
+
+/* Portrait tablet/desktop daily view: let the checklist begin directly
+   after the timetable and use the remaining width. Mobile keeps its earlier
+   single-column composition. */
+@media (orientation:portrait) and (min-width:481px), (max-aspect-ratio:1/1) and (min-width:481px){
+  .planner-shell.planner-shell.planner-shell .planner-header{
+    grid-template-columns:1fr auto!important;
+    gap:26px!important;
+    align-items:end!important;
+  }
+  .planner-shell.planner-shell.planner-shell .view-switcher{
+    display:flex!important;
+    flex-direction:row!important;
+    width:max-content!important;
+    justify-content:flex-start!important;
+    align-items:center!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .planner-layout{
+    display:grid!important;
+    grid-template-columns:clamp(250px,24vw,280px) minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+    grid-template-areas:
+      "calendar todo"
+      "study schedule"
+      "memo feedback"!important;
+    column-gap:22px!important;
+    row-gap:18px!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .calendar-area,
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .side-column,
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .month-study-group{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view #dayView{
+    grid-area:calendar!important;
+    width:max-content!important;
+    min-width:0!important;
+    justify-self:start!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view #dayView .day-card{
+    width:max-content!important;
+    max-width:none!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .todo-card{
+    grid-area:todo!important;
+    width:100%!important;
+    min-width:0!important;
+    justify-self:stretch!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .study-card{
+    grid-area:study!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+    height:auto!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .day-schedule-card{
+    grid-area:schedule!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    align-self:stretch!important;
+    height:auto!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .memo-card{
+    grid-area:memo!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    align-self:stretch!important;
+    height:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card{
+    grid-area:feedback!important;
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    align-self:stretch!important;
+    height:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .memo-card>textarea,
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card>textarea{
+    flex:1 1 auto!important;
+    width:100%!important;
+    min-height:160px!important;
+    height:auto!important;
+    resize:none!important;
+  }
+}
+
+/* Narrower tablet portrait: keep the top timetable/checklist row, then stack
+   the four lower content cards in their reading order. */
+@media (orientation:portrait) and (min-width:481px) and (max-width:700px),
+       (max-aspect-ratio:1/1) and (min-width:481px) and (max-width:700px){
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view.is-day-view .planner-layout{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto auto auto auto!important;
+    grid-template-areas:
+      "calendar"
+      "todo"
+      "study"
+      "schedule"
+      "memo"
+      "feedback"!important;
+    column-gap:0!important;
+    row-gap:18px!important;
+  }
+}
+
+/* Tablet/desktop portrait composition: use the wider portrait canvas for
+   parallel cards while keeping the narrow-phone flow unchanged. */
+@media (orientation:portrait) and (min-width:901px){
+  .planner-shell.is-month-view.is-month-view .month-study-group{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  .planner-shell.is-month-view.is-month-view .month-study-group .todo-card,
+  .planner-shell.is-month-view.is-month-view .month-study-group .study-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:100%!important;
+  }
+  .planner-shell.is-month-view.is-month-view .memo-card{
+    width:60%!important;
+    min-width:0!important;
+    height:300px!important;
+    min-height:300px!important;
+    max-height:300px!important;
+    justify-self:center!important;
+  }
+  .planner-shell.is-month-view.is-month-view .side-column{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(220px,.6fr)!important;
+    grid-template-rows:auto!important;
+    gap:12px!important;
+    align-items:stretch!important;
+  }
+  .planner-shell.is-month-view.is-month-view .month-study-group{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .planner-shell.is-month-view.is-month-view .memo-card{
+    grid-column:2!important;
+    grid-row:1!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:100%!important;
+    max-height:none!important;
+    justify-self:stretch!important;
+    align-self:stretch!important;
+  }
+  .planner-shell.is-week-view.is-week-view .week-grid{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    grid-template-rows:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    overflow:visible!important;
+  }
+  .planner-shell.is-week-view.is-week-view .week-card{
+    min-height:clamp(150px,18vw,245px)!important;
+    width:100%!important;
+  }
+  .planner-shell.is-week-view.is-week-view .month-study-group{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  .planner-shell.is-week-view.is-week-view .month-study-group .todo-card,
+  .planner-shell.is-week-view.is-week-view .month-study-group .study-card{
+    grid-column:auto!important;
+    grid-row:1!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view.is-day-view .planner-layout{
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+  }
+  .planner-shell.is-day-view.is-day-view .calendar-area,
+  .planner-shell.is-day-view.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view.is-day-view #dayView{
+    grid-column:1!important;
+    grid-row:1!important;
+    order:1!important;
+    width:max-content!important;
+    max-width:100%!important;
+    justify-self:start!important;
+  }
+  .planner-shell.is-day-view.is-day-view #dayView .day-card{
+    width:100%!important;
+  }
+  .planner-shell.is-day-view.is-day-view .todo-card{
+    grid-column:2!important;
+    grid-row:1!important;
+    order:2!important;
+  }
+  .planner-shell.is-day-view.is-day-view .day-schedule-card{
+    grid-column:1!important;
+    grid-row:2!important;
+    order:3!important;
+  }
+  .planner-shell.is-day-view.is-day-view .study-card{
+    grid-column:2!important;
+    grid-row:2!important;
+    order:4!important;
+  }
+  .planner-shell.is-day-view.is-day-view .memo-card{
+    grid-column:1!important;
+    grid-row:3!important;
+    order:5!important;
+  }
+  .planner-shell.is-day-view.is-day-view .feedback-card{
+    grid-column:2!important;
+    grid-row:3!important;
+    order:6!important;
+  }
+  .planner-shell.is-day-view.is-day-view .planner-layout{
+    row-gap:8px!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-grid{
+    width:max-content!important;
+    max-width:100%!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-grid-row{
+    grid-template-columns:clamp(52px,10vw,76px) max-content!important;
+  }
+  .planner-shell.is-day-view.is-day-view .slot-grid{
+    width:max-content!important;
+    grid-template-columns:repeat(6,.64cm)!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-slot{
+    width:.64cm!important;
+    height:.64cm!important;
+  }
+}
+
+@media (orientation:portrait) and (min-width:481px), (max-aspect-ratio:1/1) and (min-width:481px){
+  .planner-shell.is-day-view.is-day-view.is-day-view .planner-layout{
+    display:flex!important;
+    flex-wrap:wrap!important;
+    align-items:flex-start!important;
+    align-content:flex-start!important;
+    gap:8px!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .calendar-area,
+  .planner-shell.is-day-view.is-day-view.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view #dayView{
+    flex:0 0 clamp(220px,34%,320px)!important;
+    width:auto!important;
+    max-width:100%!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .todo-card{
+    flex:1 1 0!important;
+    min-width:0!important;
+    width:auto!important;
+    order:2!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .day-schedule-card,
+  .planner-shell.is-day-view.is-day-view.is-day-view .study-card,
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card,
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card{
+    flex:1 1 calc(50% - 4px)!important;
+    min-width:0!important;
+    width:auto!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .day-schedule-card{order:3!important}
+  .planner-shell.is-day-view.is-day-view.is-day-view .study-card{order:4!important}
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card{order:5!important}
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card{order:6!important}
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card,
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card{
+    display:grid!important;
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    column-gap:10px!important;
+    min-height:220px!important;
+    height:auto!important;
+    padding:17px!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card>.card-kicker,
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card>.card-kicker{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card>.memo-title,
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card>.memo-title{
+    grid-column:1!important;
+    grid-row:2!important;
+    margin:0!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card>textarea,
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card>textarea{
+    grid-column:2!important;
+    grid-row:1 / span 2!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    margin:0!important;
+  }
+}
+
+@media (orientation:portrait) and (min-width:481px){
+  .planner-shell.is-day-view.is-day-view.is-day-view .planner-layout{
+    display:grid!important;
+    grid-template-columns:clamp(220px,34%,320px) minmax(0,1fr)!important;
+    grid-template-rows:auto!important;
+    gap:8px!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .calendar-area{
+    display:block!important;
+    grid-column:1!important;
+    grid-row:1!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .side-column{
+    display:grid!important;
+    grid-column:2!important;
+    grid-row:1!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-auto-rows:max-content!important;
+    gap:8px!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view #dayView{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .todo-card{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+    width:100%!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .day-schedule-card{
+    grid-column:1!important;
+    grid-row:2!important;
+    order:2!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .study-card{
+    grid-column:2!important;
+    grid-row:2!important;
+    order:3!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .memo-card{
+    grid-column:1!important;
+    grid-row:3!important;
+    order:4!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view .feedback-card{
+    grid-column:2!important;
+    grid-row:3!important;
+    order:5!important;
+  }
+}
+
+/* Portrait flow for tablets and desktop-sized portrait windows as well. */
+@media (orientation:portrait){
+  html:has(.planner-shell),
+  body:has(.planner-shell){
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  .planner-shell{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    width:calc(100vw - 18px)!important;
+    height:auto!important;
+    min-height:calc(100dvh - 18px)!important;
+    max-width:none!important;
+    margin:9px auto!important;
+    padding:clamp(10px,3vw,16px) clamp(10px,3vw,16px)!important;
+    aspect-ratio:auto!important;
+    zoom:1!important;
+    transform:none!important;
+    overflow:visible!important;
+  }
+  .planner-shell .planner-header{
+    grid-template-columns:1fr!important;
+    gap:clamp(10px,3vw,14px)!important;
+    padding-bottom:clamp(12px,3vw,16px)!important;
+  }
+  .planner-shell .view-switcher{
+    width:100%!important;
+    justify-content:center!important;
+  }
+  .planner-shell .planner-layout{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    gap:12px!important;
+    width:100%!important;
+    margin:clamp(8px,3vw,14px) auto 0!important;
+    transform:none!important;
+    justify-items:stretch!important;
+  }
+  .planner-shell .calendar-area{
+    display:block!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:1!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell .side-column{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+    order:2!important;
+    width:100%!important;
+  }
+  .planner-shell .month-study-group{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  .planner-shell .month-study-group .todo-card,
+  .planner-shell .month-study-group .study-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:100%!important;
+    max-width:none!important;
+    transform:none!important;
+  }
+  .planner-shell .week-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    gap:8px!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+  .planner-shell .week-card{
+    min-height:clamp(120px,20vw,170px)!important;
+    width:100%!important;
+  }
+
+  .planner-shell.is-day-view .planner-layout{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+  }
+  .planner-shell.is-day-view .calendar-area,
+  .planner-shell.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view .day-schedule-card{
+    display:block!important;
+    order:1!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view .todo-card{
+    display:block!important;
+    order:2!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .study-card{
+    display:block!important;
+    order:3!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view #dayView{
+    display:block!important;
+    order:4!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .planner-shell.is-day-view .memo-card{
+    display:grid!important;
+    order:5!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:220px!important;
+  }
+  .planner-shell.is-day-view .feedback-card{
+    display:grid!important;
+    order:6!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:220px!important;
+  }
+  .planner-shell.is-day-view .time-grid{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .time-grid-row{
+    grid-template-columns:clamp(52px,10vw,76px) minmax(0,1fr)!important;
+    gap:6px!important;
+  }
+  .planner-shell.is-day-view .slot-grid{
+    width:100%!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  }
+  .planner-shell.is-day-view .time-slot{width:auto!important}
+  .planner-shell.is-day-view .feedback-card,
+  .planner-shell.is-day-view .feedback-card>.card-kicker,
+  .planner-shell.is-day-view .feedback-card>.memo-title,
+  .planner-shell.is-day-view .feedback-card>textarea{
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+  }
+}
+
+/* Final portrait feedback alignment. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell.is-day-view.is-day-view .feedback-card{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    padding:17px!important;
+    padding-left:17px!important;
+    padding-right:17px!important;
+    box-sizing:border-box!important;
+    align-items:start!important;
+  }
+  .planner-shell.is-day-view.is-day-view .memo-card{
+    padding-left:17px!important;
+    padding-right:17px!important;
+    box-sizing:border-box!important;
+  }
+  .planner-shell.is-day-view.is-day-view .feedback-card>.card-kicker{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view .feedback-card>.memo-title{
+    grid-column:1!important;
+    grid-row:2!important;
+    margin:0 0 13px!important;
+  }
+  .planner-shell.is-day-view.is-day-view .feedback-card>textarea{
+    grid-column:1!important;
+    grid-row:3!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    margin:0!important;
+    justify-self:stretch!important;
+  }
+  .planner-shell.is-day-view.is-day-view .memo-card>textarea{
+    justify-self:stretch!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+}
+
+/* Center the complete portrait scene and keep every card on the same width
+   axis, so the outside whitespace is symmetrical at all phone ratios. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell{
+    left:auto!important;
+    right:auto!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+  }
+  .planner-shell .planner-header,
+  .planner-shell .period-toolbar,
+  .planner-shell .planner-layout{
+    width:100%!important;
+    margin-left:auto!important;
+    margin-right:auto!important;
+    box-sizing:border-box!important;
+  }
+  .planner-shell .planner-layout{
+    justify-items:stretch!important;
+    align-items:start!important;
+  }
+  .planner-shell .calendar-area,
+  .planner-shell .side-column,
+  .planner-shell .month-study-group,
+  .planner-shell .calendar-card,
+  .planner-shell .paper-card,
+  .planner-shell .day-card,
+  .planner-shell .week-card{
+    justify-self:stretch!important;
+    margin-left:0!important;
+    margin-right:0!important;
+  }
+}
+
+/* Keep portrait side insets symmetric and force feedback text to stay
+   horizontal at every portrait width. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell{
+    margin-inline:auto!important;
+    padding-left:clamp(10px,3vw,16px)!important;
+    padding-right:clamp(10px,3vw,16px)!important;
+  }
+  .planner-shell .planner-layout,
+  .planner-shell .calendar-area,
+  .planner-shell .side-column,
+  .planner-shell .paper-card,
+  .planner-shell .calendar-card,
+  .planner-shell .day-card{
+    width:100%!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    box-sizing:border-box!important;
+  }
+  .planner-shell.is-day-view .feedback-card,
+  .planner-shell.is-day-view .feedback-card .card-kicker,
+  .planner-shell.is-day-view .feedback-card .memo-title,
+  .planner-shell.is-day-view .feedback-card textarea{
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+  }
+  .planner-shell.is-day-view .feedback-card .memo-title{
+    display:block!important;
+    white-space:nowrap!important;
+  }
+  .planner-shell.is-day-view .feedback-card textarea{
+    width:100%!important;
+    min-width:0!important;
+    text-align:left!important;
+  }
+  .planner-shell.is-day-view .feedback-card{
+    display:grid!important;
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    grid-template-rows:auto minmax(0,1fr)!important;
+    column-gap:10px!important;
+    align-items:start!important;
+    padding:17px!important;
+  }
+  .planner-shell.is-day-view .feedback-card>.card-kicker{
+    grid-column:1!important;
+    grid-row:1!important;
+    margin:0 0 4px!important;
+  }
+  .planner-shell.is-day-view .feedback-card>.memo-title{
+    grid-column:1!important;
+    grid-row:2!important;
+    margin:0!important;
+    align-self:start!important;
+  }
+  .planner-shell.is-day-view .feedback-card>textarea{
+    grid-column:2!important;
+    grid-row:1 / span 2!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    margin:0!important;
+  }
+}
+
+/* Match the portrait feedback card to the memo card exactly. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell.is-day-view .feedback-card{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto minmax(0,1fr)!important;
+    column-gap:0!important;
+    row-gap:0!important;
+    padding:17px!important;
+    align-items:start!important;
+  }
+  .planner-shell.is-day-view .feedback-card>.card-kicker{
+    grid-column:1!important;
+    grid-row:1!important;
+  }
+  .planner-shell.is-day-view .feedback-card>.memo-title{
+    grid-column:1!important;
+    grid-row:2!important;
+    margin:0 0 13px!important;
+  }
+  .planner-shell.is-day-view .feedback-card>textarea{
+    grid-column:1!important;
+    grid-row:3!important;
+    width:100%!important;
+    height:100%!important;
+    min-height:0!important;
+    margin:0!important;
+  }
+}
+.calendar-cell .day-number{transform:translateY(-2px)}.week-card header{transform:translateY(-2px)}
+.week-schedule-list{display:grid;gap:2px;margin:5px 0 0;color:var(--ink);font-family:PlannerScheduleFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:1rem;line-height:1.08;text-align:left}.week-schedule-item,.week-schedule-more{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.week-schedule-item:before{content:"";display:inline-block;width:5px;height:5px;margin:0 4px 0 1px;border-radius:50%;vertical-align:.08em;background:#cb9a7b}.week-schedule-item.is-done{color:var(--soft);text-decoration:line-through}.week-schedule-more{color:var(--deep);font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;font-size:.9rem}
+.week-card .subject-dots{display:none}
+.calendar-cell.has-goal-stamp{overflow:visible}.calendar-cell .goal-stamp{width:88px;height:88px}.week-card{height:245px;overflow:visible}.week-card .goal-stamp,.week-card .goal-stamp-placeholder{flex-basis:144px;width:144px;height:144px}
+.calendar-cell .goal-stamp{width:106px;height:106px}.week-card .goal-stamp,.week-card .goal-stamp-placeholder{flex-basis:346px;width:346px;height:346px}
+.week-card .goal-stamp,.week-card .goal-stamp-placeholder{position:static;top:auto;left:auto;right:auto;bottom:auto;margin:6px 0 0 auto;flex:0 0 90px;width:90px;height:90px}
+
+@media (orientation:landscape){
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr) minmax(0,1.3fr);grid-template-rows:max-content max-content;align-content:start;column-gap:6px;row-gap:4px}
+  .planner-shell.is-day-view .calendar-area,.planner-shell.is-day-view .side-column{display:contents}
+  .planner-shell.is-day-view .daily-total-card{grid-column:2;grid-row:1;align-self:start}
+  .planner-shell.is-day-view #dayView{grid-column:4;grid-row:1/span 2;min-width:0}
+  .planner-shell.is-day-view .todo-card{grid-column:3;grid-row:1/span 2;min-width:0}
+  .planner-shell.is-day-view .day-schedule-card{grid-column:1;grid-row:1;min-width:0}
+  .planner-shell.is-day-view .memo-card{grid-column:2;grid-row:2;min-width:0}
+  .planner-shell.is-day-view .study-card{grid-column:1;grid-row:2;min-width:0}
+  .planner-shell.is-day-view .day-card{padding:8px}
+  .planner-shell.is-day-view .day-time-controls{margin-bottom:7px}
+  .planner-shell.is-day-view .time-grid-row{gap:5px}
+  .planner-shell.is-day-view .slot-grid{grid-template-columns:repeat(6,.6cm)}
+  .planner-shell.is-day-view .time-slot{width:.6cm;height:clamp(13px,calc((100dvh - 340px)/25),.6cm)}
+}
+
+@media (orientation:landscape) and (max-width:900px){
+  .planner-shell{width:calc(100vw - 18px);margin:9px auto;padding:12px 10px}
+  .planner-layout{grid-template-columns:minmax(0,1fr) minmax(190px,.55fr);gap:10px}
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .planner-shell.is-day-view .time-grid-row{grid-template-columns:42px max-content}
+  .planner-shell.is-day-view .slot-grid{grid-template-columns:repeat(6,.4cm)}
+  .planner-shell.is-day-view .time-slot{width:.4cm}
+}
+
+@media (min-width:901px) and (max-height:900px){
+  .planner-shell{padding:20px 28px}
+  .planner-header{padding-bottom:14px}
+  .period-toolbar{margin:6px 0}
+  .planner-layout{gap:12px}
+  .calendar-card,.day-card{padding:10px}
+  .calendar-grid{gap:4px}
+  .calendar-cell{height:clamp(58px,6vw,92px);min-height:58px;padding:6px;overflow:hidden}
+  .cell-meta{margin-top:6px}
+  .schedule-preview{max-height:3.45em}
+  .planner-shell.is-day-view .planner-layout{gap:10px}
+  .planner-shell.is-day-view .paper-card{padding:11px}
+  .planner-shell.is-day-view .card-heading{margin-bottom:8px}
+  .planner-shell.is-day-view .todo-list{gap:3px}
+  .planner-shell.is-day-view .checklist-row{min-height:30px}
+  .planner-shell.is-day-view .checklist-content{gap:4px;padding:0 4px}
+  .planner-shell.is-day-view .checklist-subject{height:24px}
+  .planner-shell.is-day-view .day-schedule-list{gap:2px}
+  .planner-shell.is-day-view .day-schedule-row{padding:4px 6px}
+  .planner-shell.is-day-view .memo-card textarea{min-height:150px}
+  .planner-shell.is-day-view .study-summary{gap:10px;margin:2px 0 8px}
+  .planner-shell.is-day-view .pie-chart{width:82px;height:82px}
+  .planner-shell.is-day-view .study-legend{gap:3px;margin-top:8px}
+  .planner-shell.is-day-view .time-slot{height:clamp(13px,calc((100dvh - 340px)/25),.6cm)}
+}
+
+@media (max-width:1200px),(max-height:800px){
+  html:has(.planner-shell),body:has(.planner-shell){overflow:auto}
+  .planner-shell{min-height:auto}
+  .planner-shell.is-week-view,.planner-shell.is-day-view{height:auto;overflow:visible}
+  .calendar-cell.has-goal-stamp{height:88px;min-height:88px;overflow:hidden;display:flex;flex-direction:column}
+  .calendar-cell.has-goal-stamp .goal-stamp{position:static;width:54px;height:54px;margin:4px 0 0 auto;flex:0 0 54px}
+}
+
+.planner-shell.is-week-view{height:auto;overflow:visible}
+html:has(.planner-shell.is-week-view),body:has(.planner-shell.is-week-view){overflow:auto}
+.planner-shell.is-week-view .week-grid{grid-template-columns:repeat(7,minmax(112px,1fr));overflow:auto;min-width:0}
+
+@media (orientation:landscape) and (max-width:1200px){
+  .planner-shell.is-day-view{--day-font-scale:clamp(.78,calc(.467 + .037vw),1)}
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr) minmax(0,1.3fr);grid-template-rows:max-content max-content;align-content:start;row-gap:6px}
+  .planner-shell.is-day-view .card-kicker{font-size:calc(.62rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .card-heading h2,.planner-shell.is-day-view .memo-title{font-size:calc(1.13rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .checklist-input{font-size:calc(1.09rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .checklist-subject{font-size:calc(.94rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .day-schedule-row{font-size:calc(1.35rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .time-highlight-label{font-size:calc(1.05rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .daily-total-row h2{font-size:calc(1rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .study-total strong{font-size:calc(1.25rem * var(--day-font-scale))}
+  .planner-shell.is-day-view .selected-date,.planner-shell.is-day-view .time-range{font-size:calc(.65rem * var(--day-font-scale))}
+}
+
+@media (orientation:landscape) and (max-width:760px){
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);grid-template-rows:repeat(4,max-content);align-content:start;row-gap:6px}
+  .planner-shell.is-day-view .day-schedule-card{grid-column:1;grid-row:1}
+  .planner-shell.is-day-view .study-card{grid-column:1;grid-row:2}
+  .planner-shell.is-day-view .daily-total-card{grid-column:1;grid-row:3}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:4}
+  .planner-shell.is-day-view .todo-card{grid-column:2;grid-row:1/span 2}
+  .planner-shell.is-day-view #dayView{grid-column:2;grid-row:3/span 2}
+}
+
+.planner-shell.is-week-view{height:calc(100dvh - 48px);overflow:hidden}
+html:has(.planner-shell.is-week-view),body:has(.planner-shell.is-week-view){overflow:hidden}
+.planner-shell.is-week-view .planner-layout{min-height:calc(100dvh - 250px);align-items:stretch}
+.planner-shell.is-week-view #weekView{display:grid;grid-template-rows:minmax(245px,1fr) auto;gap:10px;min-height:calc(100dvh - 250px);min-width:0}
+.planner-shell.is-week-view .week-grid{height:100%;overflow:hidden;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0}
+.planner-shell.is-week-view .week-card{height:auto;min-height:245px}
+
+/* Final day-view placement: study log in the total-study slot, memo in the
+   former study-log slot, and feedback in the former memo slot. */
+@media (orientation:landscape){
+  .planner-shell.is-day-view{display:flex;flex-direction:column}
+  .planner-shell.is-day-view .daily-total-card{display:none!important}
+  .planner-shell.is-day-view .planner-layout{flex:1;min-height:0;grid-template-rows:max-content minmax(0,1fr);align-items:stretch}
+  .planner-shell.is-day-view .study-card{grid-column:2;grid-row:1;display:block;min-width:0}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .feedback-card{grid-column:2;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .memo-card textarea,.planner-shell.is-day-view .feedback-card textarea{flex:1;height:auto;min-height:0;resize:none}
+}
+
+.planner-shell{--font-ratio:1}
+@media (max-width:1440px){.planner-shell{--font-ratio:clamp(.78,calc(.467 + .037vw),1)}}
+@media (max-height:900px){.planner-shell{--font-ratio:clamp(.78,calc(.1 + .1vh),1)}}
+.planner-shell .eyebrow,.planner-shell .card-kicker{font-size:calc(.62rem * var(--font-ratio))}.planner-shell .brand-title-row h1{font-size:calc(1.55rem * var(--font-ratio))}.planner-shell .brand-period h2{font-size:calc(1.2rem * var(--font-ratio))}.planner-shell .brand-period p{font-size:calc(.68rem * var(--font-ratio))}.planner-shell .view-button{font-size:calc(.9rem * var(--font-ratio))}.planner-shell .icon-button{font-size:calc(1.7rem * var(--font-ratio))}.planner-shell .today-button{font-size:calc(.75rem * var(--font-ratio))}
+.planner-shell .daily-total-row h2{font-size:calc(1rem * var(--font-ratio))}.planner-shell .daily-total-row strong{font-size:calc(1.08rem * var(--font-ratio))}.planner-shell .weekday-row{font-size:calc(.72rem * var(--font-ratio))}.planner-shell .day-number{font-size:calc(.75rem * var(--font-ratio))}.planner-shell .cell-meta{font-size:calc(.64rem * var(--font-ratio))}.planner-shell .cell-meta strong{font-size:calc(.68rem * var(--font-ratio))}.planner-shell .schedule-preview{font-size:calc(1.05rem * var(--font-ratio))}
+.planner-shell .week-card h3{font-size:calc(.78rem * var(--font-ratio))}.planner-shell .week-date{font-size:calc(.72rem * var(--font-ratio))}.planner-shell .week-total{font-size:calc(1.1rem * var(--font-ratio))}.planner-shell .week-card p{font-size:calc(.68rem * var(--font-ratio))}.planner-shell .card-heading h2,.planner-shell .memo-title{font-size:calc(1.13rem * var(--font-ratio))}.planner-shell .memo-card textarea{font-size:calc(.82rem * var(--font-ratio))}.planner-shell .selected-date{font-size:calc(.62rem * var(--font-ratio))}.planner-shell .schedule-empty{font-size:calc(.72rem * var(--font-ratio))}.planner-shell .day-schedule-row{font-size:calc(1.35rem * var(--font-ratio))}.planner-shell .schedule-preview-content{font-size:calc(1.35rem * var(--font-ratio))}.planner-shell .schedule-preview-content small{font-size:calc(1.05rem * var(--font-ratio))}.planner-shell .schedule-delete{font-size:calc(1.2rem * var(--font-ratio))}
+.planner-shell .checklist-number{font-size:calc(.7rem * var(--font-ratio))}.planner-shell .checklist-subject{font-size:calc(.94rem * var(--font-ratio))}.planner-shell .checklist-input{font-size:calc(1.09rem * var(--font-ratio))}.planner-shell .study-total{font-size:calc(.68rem * var(--font-ratio))}.planner-shell .study-total strong{font-size:calc(1.25rem * var(--font-ratio))}.planner-shell .subject-picker{font-size:calc(.7rem * var(--font-ratio))}.planner-shell .legend-item{font-size:calc(.68rem * var(--font-ratio))}.planner-shell .legend-item strong{font-size:calc(.65rem * var(--font-ratio))}.planner-shell .empty-message{font-size:calc(.7rem * var(--font-ratio))}
+.planner-shell .clear-time-button{font-size:calc(.65rem * var(--font-ratio))}.planner-shell .time-range{font-size:calc(.65rem * var(--font-ratio))}.planner-shell .time-highlight-label{font-size:calc(1.05rem * var(--font-ratio))}.planner-shell .dialog-card h2{font-size:calc(1.2rem * var(--font-ratio))}.planner-shell .dialog-date{font-size:calc(.7rem * var(--font-ratio))}.planner-shell .planner-dialog input{font-size:calc(1.35rem * var(--font-ratio))}.planner-shell .planner-dialog select{font-size:calc(1.2rem * var(--font-ratio))}.planner-shell .week-goal-heading h3{font-size:calc(1.05rem * var(--font-ratio))}.planner-shell .week-goal-input{font-size:calc(.76rem * var(--font-ratio))}.planner-shell .week-goal-input input{font-size:calc(.85rem * var(--font-ratio))}.planner-shell .week-goal-progress-text{font-size:calc(.72rem * var(--font-ratio))}.planner-shell .week-schedule-list{font-size:calc(1rem * var(--font-ratio))}.planner-shell .week-schedule-more{font-size:calc(.9rem * var(--font-ratio))}
+
+/* Timer-style responsive scene: scale the whole planner together so its
+   objects, spacing, and typography keep the same proportions. */
+.planner-shell{
+  --font-ratio:1;
+  --planner-gutter:clamp(9px,1.667vw,24px);
+  --planner-scale:clamp(.72,min(calc(100vw / 1440px),calc(100dvh / 900px)),1);
+  container-type:inline-size;
+  zoom:var(--planner-scale);
+  aspect-ratio:3 / 2;
+  width:min(calc(1440px / var(--planner-scale)),calc((100vw - var(--planner-gutter) - var(--planner-gutter)) / var(--planner-scale)),calc((100dvh - var(--planner-gutter) - var(--planner-gutter)) * 1.5 / var(--planner-scale)));
+  height:auto;
+  min-height:0;
+  overflow:hidden;
+  margin:calc(var(--planner-gutter) / var(--planner-scale)) auto;
+}
+
+/* Keep the scene layout instead of switching to a stacked layout merely
+   because a landscape display is narrower. The scene itself is scaled. */
+@media (orientation:landscape){
+  .planner-shell:not(.is-day-view) .planner-layout{grid-template-columns:minmax(0,1fr) minmax(280px,340px)}
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr) minmax(0,1.3fr);grid-template-rows:max-content max-content;align-content:start}
+}
+
+.planner-shell.is-week-view{height:auto;min-height:0;overflow:hidden}
+.planner-shell.is-week-view .planner-layout{min-height:0}
+.planner-shell.is-week-view #weekView{min-height:0}
+html:has(.planner-shell),body:has(.planner-shell){overflow:hidden}
+
+/* Final day-view placement after all responsive rules. */
+@media (orientation:landscape){
+  .planner-shell.is-day-view{display:flex;flex-direction:column}
+  .planner-shell.is-day-view .daily-total-card{display:none!important}
+  .planner-shell.is-day-view .planner-layout{flex:1;min-height:0;grid-template-rows:max-content minmax(0,1fr);align-items:stretch}
+  .planner-shell.is-day-view .study-card{grid-column:2;grid-row:1;display:block;min-width:0}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .feedback-card{grid-column:2;grid-row:2;display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+  .planner-shell.is-day-view .memo-card textarea,.planner-shell.is-day-view .feedback-card textarea{flex:1;height:auto;min-height:0;resize:none}
+}
+
+/* Slightly larger day timetable while keeping all 25 hours visible. */
+@media (orientation:landscape){
+  .planner-shell.is-day-view .time-grid-row{grid-template-columns:76px max-content;gap:6px}
+  .planner-shell.is-day-view .slot-grid{grid-template-columns:repeat(6,.64cm)}
+  .planner-shell.is-day-view .time-slot{width:.64cm;height:.64cm}
+}
+
+/* Week view: three day cards on the first row, four on the second row, with
+   the weekly goal panel anchored beneath them. */
+@media (orientation:landscape){
+  .planner-shell.is-week-view{display:flex;flex-direction:column}
+  .planner-shell.is-week-view .planner-layout{flex:1;min-height:0;align-items:stretch}
+  .planner-shell.is-week-view .calendar-area{height:100%;min-height:0}
+  .planner-shell.is-week-view #weekView{height:100%;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;gap:10px}
+  .planner-shell.is-week-view .week-grid{height:100%;min-height:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:8px;overflow:visible}
+  .planner-shell.is-week-view .week-card{height:auto;min-height:0}
+  .planner-shell.is-week-view .week-card:nth-child(-n+3){grid-column:span 4}
+  .planner-shell.is-week-view .week-card:nth-child(n+4){grid-column:span 3}
+}
+
+/* Let the timetable use the available height, then give its unused width to
+   the checklist. Each of the 25 time rows shares the fitted height equally. */
+@media (orientation:landscape){
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(220px,1fr)}
+  .planner-shell.is-day-view #dayView{height:100%;min-height:0}
+  .planner-shell.is-day-view .day-card{height:100%;min-height:0;display:flex;flex-direction:column}
+  .planner-shell.is-day-view .time-grid{flex:1;min-height:0;height:auto;display:grid;grid-template-rows:repeat(25,minmax(0,1fr))}
+  .planner-shell.is-day-view .time-grid-row{min-height:0}
+  .planner-shell.is-day-view .slot-grid{height:100%}
+  .planner-shell.is-day-view .time-slot{height:100%}
+  .planner-shell.is-day-view .time-grid{transform:translateX(-.5cm)}
+}
+
+/* Week stamps: double the current 90px reference size. */
+.planner-shell.is-week-view .week-card .goal-stamp,.planner-shell.is-week-view .week-card .goal-stamp-placeholder{flex:0 0 105px;width:105px;height:105px}
+.planner-shell.is-week-view .week-card .goal-stamp,.planner-shell.is-week-view .week-card .goal-stamp-placeholder{transform:translate(.5cm,.7cm)}
+.planner-shell:not(.is-day-view) .memo-card{display:block}
+
+/* Put the memo field beside its title so the field can use the full card
+   height. */
+.planner-shell .memo-card{display:grid;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:10px;align-items:start}
+.planner-shell .memo-card>.card-kicker{grid-column:1;grid-row:1}
+.planner-shell .memo-card>.memo-title{grid-column:1;grid-row:2;margin:0}
+.planner-shell .memo-card>textarea{grid-column:2;grid-row:1 / span 2;width:100%;height:100%;min-height:0;resize:none}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:166px;max-height:166px}
+}
+
+/* Final month memo size must come after all earlier responsive overrides. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:300px!important;min-height:300px!important;max-height:300px!important;overflow:visible!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:140px!important;min-height:140px!important}
+  .planner-shell.is-month-view .memo-card{transform:translateY(-.5cm)}
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:clamp(160px,calc(100dvh - 600px),300px)!important;min-height:160px!important;max-height:300px!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+/* Month right rail: make the monthly checklist and study log read as one
+   continuous card, with the checklist above the study log. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    align-self:stretch;
+    height:100%!important;
+    min-height:0!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .todo-card{grid-column:2!important;grid-row:1!important;align-self:start;transform:none!important;margin:0}
+  .planner-shell.is-month-view .study-card{grid-column:2!important;grid-row:2!important;align-self:start;transform:translateY(-9.5cm)!important;margin:0}
+}
+
+/* Final landscape scene guard: keep the timer-style proportions across
+   different landscape display sizes instead of letting old breakpoints
+   reflow or introduce scrolling. */
+@media (orientation:landscape){
+  html:has(.planner-shell),body:has(.planner-shell){overflow:hidden}
+  .planner-shell{min-height:0}
+  .planner-shell:not(.is-day-view) .planner-layout{grid-template-columns:minmax(0,1fr) minmax(280px,340px)}
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(220px,1fr);grid-template-rows:max-content minmax(0,1fr)}
+  .planner-shell.is-day-view .calendar-area,.planner-shell.is-day-view .side-column{display:contents}
+  .planner-shell.is-day-view .day-schedule-card{grid-column:1;grid-row:1;display:block}
+  .planner-shell.is-day-view .study-card{grid-column:2;grid-row:1;display:block}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:2}
+  .planner-shell.is-day-view .feedback-card{grid-column:2;grid-row:2}
+  .planner-shell.is-day-view .todo-card{grid-column:3;grid-row:1 / span 2}
+  .planner-shell.is-day-view #dayView{grid-column:4;grid-row:1 / span 2}
+  .planner-shell.is-month-view .calendar-cell{height:auto;min-height:calc(115px / var(--planner-scale))}
+  .planner-shell.is-week-view .week-grid{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));overflow:visible}
+}
+
+/* Earlier month fit: keep the calendar and its memo inside the scaled scene. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .period-toolbar{
+    margin:10px 0;
+  }
+  .planner-shell.is-month-view .planner-layout{
+    display:grid;
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-columns:minmax(0,1fr) minmax(280px,340px);
+    grid-template-rows:minmax(0,2fr) minmax(160px,1fr);
+    align-items:stretch;
+    overflow:visible;
+    transform:none;
+  }
+  .planner-shell.is-month-view .calendar-area{
+    grid-column:1;
+    grid-row:1;
+    min-height:0;
+    height:100%;
+    transform:translateY(calc(-.5cm / var(--planner-scale)));
+  }
+  .planner-shell.is-month-view #monthView,
+  .planner-shell.is-month-view #monthView .calendar-card{
+    height:100%;
+    min-height:0;
+  }
+  .planner-shell.is-month-view #monthView .calendar-card{display:flex;flex-direction:column}
+  .planner-shell.is-month-view #monthView .calendar-grid{
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-rows:repeat(5,minmax(0,1fr));
+  }
+  .planner-shell.is-month-view #monthView .calendar-cell{height:auto;min-height:0}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{
+    grid-column:2;
+    grid-row:2;
+    align-self:stretch;
+    min-height:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    overflow:visible;
+  }
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .study-card{border-top:1px dashed var(--line);border-top-left-radius:0;border-top-right-radius:0;height:100%!important;margin:0!important;transform:none!important;box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .study-card{border-top:1px dashed var(--line);border-top-left-radius:0;border-top-right-radius:0;height:100%!important;margin:0!important;transform:none!important;box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{border-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0;box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .study-card{border-top:1px dashed var(--line);border-top-left-radius:0;border-top-right-radius:0;height:100%!important;margin:0!important;transform:none!important;box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08)}
+  .planner-shell.is-month-view .memo-card{
+    grid-column:1;
+    grid-row:2;
+    align-self:stretch;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin-bottom:calc(.7cm / var(--planner-scale));
+    transform:none;
+    overflow:visible!important;
+  }
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+/* Keep every month section inside the scene: the calendar uses two parts of
+   the available height and the memo below it uses one part. */
+@media (orientation:landscape){
+  .planner-shell.is-week-view .week-card .goal-stamp,
+  .planner-shell.is-week-view .week-card .goal-stamp-placeholder{
+    position:absolute!important;
+    z-index:2;
+    right:10px!important;
+    bottom:10px!important;
+    top:auto!important;
+    left:auto!important;
+    margin:0!important;
+    width:105px!important;
+    height:105px!important;
+    flex:none!important;
+    transform:none!important;
+  }
+  .planner-shell.is-month-view .planner-layout{
+    display:grid;
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-columns:minmax(0,1fr) minmax(280px,340px);
+    grid-template-rows:minmax(0,2fr) minmax(160px,1fr);
+    align-items:stretch;
+    overflow:visible;
+    transform:none;
+  }
+  .planner-shell.is-month-view .calendar-area{
+    grid-column:1;
+    grid-row:1;
+    min-height:0;
+    height:100%;
+    transform:translateY(calc(-.5cm / var(--planner-scale)));
+  }
+  .planner-shell.is-month-view #monthView,
+  .planner-shell.is-month-view #monthView .calendar-card{
+    height:100%;
+    min-height:0;
+  }
+  .planner-shell.is-month-view #monthView .calendar-card{
+    display:flex;
+    flex-direction:column;
+  }
+  .planner-shell.is-month-view #monthView .calendar-grid{
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-rows:repeat(5,minmax(0,1fr));
+  }
+  .planner-shell.is-month-view #monthView .calendar-cell{
+    height:auto;
+    min-height:0;
+  }
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{
+    grid-column:2;
+    grid-row:2;
+    align-self:stretch;
+    min-height:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    overflow:visible;
+  }
+  .planner-shell.is-month-view .memo-card{
+    grid-column:1;
+    grid-row:2;
+    align-self:stretch;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin-bottom:calc(.7cm / var(--planner-scale));
+    transform:none;
+    overflow:visible!important;
+  }
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+/* Fit the month memo to the actual remaining layout space, rather than to a
+   fixed viewport subtraction. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view{display:flex;flex-direction:column}
+  .planner-shell.is-month-view .planner-layout{flex:1;min-height:0;grid-template-rows:minmax(0,1fr) auto;align-items:stretch}
+  .planner-shell.is-month-view .calendar-area{min-height:0}
+  .planner-shell.is-month-view .memo-card{height:100%!important;min-height:0!important;max-height:none!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{transform:none;height:180px!important;min-height:180px!important;max-height:180px!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:140px!important;min-height:140px!important}
+}
+
+/* Keep the month view in its original two-column, two-row flow so the study
+   log stays directly below the checklist. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view{display:block}
+  .planner-shell.is-month-view .planner-layout{display:grid;flex:none;min-height:0;grid-template-columns:minmax(0,1fr) minmax(280px,340px);grid-template-rows:auto auto;align-items:start;transform:none}
+  .planner-shell.is-month-view .calendar-area{grid-column:1;grid-row:1;transform:translateY(-.5cm)}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{grid-column:2;grid-row:2;align-self:start;transform:none}
+  .planner-shell.is-month-view .memo-card{grid-column:1;grid-row:2}
+}
+
+/* Month memo starts 0.5cm below the calendar and ends 0.7cm above the
+   bottom of the visible planner scene. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view{display:flex;flex-direction:column}
+  .planner-shell.is-month-view .planner-layout{flex:1;min-height:0;grid-template-rows:auto minmax(0,1fr);align-items:stretch;transform:none}
+  .planner-shell.is-month-view .calendar-area{grid-column:1;grid-row:1;transform:translateY(-.5cm)}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{grid-column:2;grid-row:2;align-self:start;transform:none}
+  .planner-shell.is-month-view .memo-card{grid-column:1;grid-row:2;align-self:stretch;height:auto!important;min-height:0!important;max-height:none!important;margin-bottom:.7cm;transform:none;overflow:visible!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+/* Restore the month right column and lift only the calendar. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .planner-layout{transform:none}
+  .planner-shell.is-month-view .calendar-area{transform:translateY(-.5cm)}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{grid-column:2;grid-row:2;transform:none}
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:300px;min-height:300px;max-height:300px;overflow:visible}
+  .planner-shell.is-month-view .memo-card>textarea{height:140px!important;min-height:140px!important;align-self:stretch}
+}
+
+/* Restore the original vertical memo layout for week and day views. */
+.planner-shell.is-week-view .memo-card,.planner-shell.is-day-view .memo-card{display:flex!important;grid-template-columns:none;grid-template-rows:none;column-gap:0;flex-direction:column}
+.planner-shell.is-week-view .memo-card>.card-kicker,.planner-shell.is-week-view .memo-card>.memo-title,.planner-shell.is-week-view .memo-card>textarea,.planner-shell.is-day-view .memo-card>.card-kicker,.planner-shell.is-day-view .memo-card>.memo-title,.planner-shell.is-day-view .memo-card>textarea{grid-column:auto;grid-row:auto}
+.planner-shell.is-week-view .memo-card>textarea,.planner-shell.is-day-view .memo-card>textarea{flex:1;width:100%;height:auto;min-height:0;resize:none}
+
+/* Month toolbar: keep the period arrows beside Today and reclaim the
+   separated toolbar space for the calendar and memo. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .period-toolbar{justify-content:flex-end;margin:10px 0}
+  .planner-shell.is-month-view .period-toolbar .today-button{margin-left:0}
+  .planner-shell.is-month-view .planner-layout{transform:translateY(-6px)}
+  .planner-shell.is-month-view .memo-card{height:166px;max-height:166px}
+}
+
+/* Month memo belongs directly below the calendar, not in the side column. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(280px,340px);grid-template-rows:auto auto;align-items:start}
+  .planner-shell.is-month-view .calendar-area{grid-column:1;grid-row:1}
+  .planner-shell.is-month-view .side-column{display:contents}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{grid-column:2;grid-row:2;display:block;align-self:start;margin-top:0;transform:translateY(-9.5cm)}
+  .planner-shell.is-month-view .memo-card{grid-column:1;grid-row:2;display:block}
+}
+
+/* Week memo is the fourth card in the first row: Mon/Tue/Wed/Memo, then
+   Thu/Fri/Sat/Sun. */
+@media (orientation:landscape){
+  .planner-shell.is-week-view{overflow:visible}
+  .planner-shell.is-week-view .week-grid{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));overflow:visible}
+  .planner-shell.is-week-view .week-grid .week-card:nth-child(-n+3),.planner-shell.is-week-view .week-grid .week-card:nth-child(n+4){grid-column:auto}
+  .planner-shell.is-week-view .week-grid .memo-card{display:flex;min-width:0;height:100%;min-height:0;flex-direction:column}
+.planner-shell.is-week-view .week-grid .memo-card textarea{flex:1;height:auto;min-height:0;resize:none}
+}
+
+/* Keep the month memo inside the visible calendar area. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:160px;max-height:160px;display:flex;min-height:0;flex-direction:column;overflow:hidden}
+  .planner-shell.is-month-view .memo-card textarea{flex:1;height:auto;min-height:0;resize:none}
+}
+
+/* Final memo layout after the view-specific card rules. */
+.planner-shell .memo-card{display:grid!important;grid-template-columns:max-content minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:10px;align-items:start}
+.planner-shell .memo-card>.card-kicker{grid-column:1;grid-row:1}
+.planner-shell .memo-card>.memo-title{grid-column:1;grid-row:2;margin:0}
+.planner-shell .memo-card>textarea{grid-column:2;grid-row:1 / span 2;width:100%;height:100%;min-height:0;resize:none}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:166px;max-height:166px}
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .memo-card{height:300px!important;min-height:300px!important;max-height:300px!important;overflow:visible!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:140px!important;min-height:140px!important}
+}
+
+/* Final month placement and remaining-height sizing. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view{display:flex;flex-direction:column}
+  .planner-shell.is-month-view .planner-layout{flex:1;min-height:0;grid-template-rows:auto minmax(0,1fr);align-items:stretch;transform:none}
+  .planner-shell.is-month-view .calendar-area{grid-column:1;grid-row:1;transform:translateY(-.5cm)}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{grid-column:2;grid-row:2;align-self:start;transform:none}
+  .planner-shell.is-month-view .memo-card{grid-column:1;grid-row:2;align-self:stretch;height:auto!important;min-height:0!important;max-height:none!important;margin-bottom:.7cm;transform:none;overflow:visible!important}
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+  .planner-shell.is-month-view .planner-layout{row-gap:0}
+  .planner-shell.is-month-view .memo-card{margin-top:18px}
+  .planner-shell.is-month-view .todo-card{
+    border-bottom:0;
+    border-bottom-left-radius:0;
+    border-bottom-right-radius:0;
+    box-shadow:5px 0 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+  .planner-shell.is-month-view .study-card{
+    border-top:1px dashed var(--line);
+    border-top-left-radius:0;
+    border-top-right-radius:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    box-shadow:5px 7px 0 rgba(83,68,51,.08),-5px 0 0 rgba(83,68,51,.08);
+  }
+}
+
+/* Scene-relative offsets for the current visual state.  The planner is
+   zoomed as one scene, so these baseline values are divided by the scene
+   scale before zoom is applied. */
+@media (orientation:landscape){
+  .planner-shell.is-month-view .calendar-area{transform:translateY(calc(-.5cm / var(--planner-scale)))}
+  .planner-shell.is-month-view .study-card{transform:translateY(calc(-9.5cm / var(--planner-scale)))!important}
+  .planner-shell.is-week-view .week-card .goal-stamp,.planner-shell.is-week-view .week-card .goal-stamp-placeholder{transform:translate(calc(.5cm / var(--planner-scale)),calc(.7cm / var(--planner-scale)))}
+  .planner-shell.is-day-view .time-grid{transform:translateX(calc(-.5cm / var(--planner-scale)))}
+}
+
+/* Final landscape scene guard. */
+@media (orientation:landscape){
+  html:has(.planner-shell),body:has(.planner-shell){overflow:hidden}
+  .planner-shell{min-height:0}
+  .planner-shell:not(.is-day-view) .planner-layout{grid-template-columns:minmax(0,1fr) minmax(280px,340px)}
+  .planner-shell.is-day-view .planner-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(220px,1fr);grid-template-rows:max-content minmax(0,1fr)}
+  .planner-shell.is-day-view .calendar-area,.planner-shell.is-day-view .side-column{display:contents}
+  .planner-shell.is-day-view .day-schedule-card{grid-column:1;grid-row:1;display:block}
+  .planner-shell.is-day-view .study-card{grid-column:2;grid-row:1;display:block}
+  .planner-shell.is-day-view .memo-card{grid-column:1;grid-row:2}
+  .planner-shell.is-day-view .feedback-card{grid-column:2;grid-row:2}
+  .planner-shell.is-day-view .todo-card{grid-column:3;grid-row:1 / span 2}
+  .planner-shell.is-day-view #dayView{grid-column:4;grid-row:1 / span 2}
+  .planner-shell.is-month-view .calendar-cell{height:auto;min-height:calc(115px / var(--planner-scale))}
+  .planner-shell.is-week-view .week-grid{grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));overflow:visible}
+}
+
+/* Final month fit: keep the calendar and its memo inside the scaled scene. */
+/* The two right-side month objects share one layout group. */
+.month-study-group{display:contents}
+@media (orientation:landscape){
+  .planner-shell.is-month-view .planner-layout{
+    grid-template-columns:minmax(0,1fr) minmax(240px,280px)!important;
+    grid-template-rows:minmax(0,2.1fr) minmax(160px,.9fr)!important;
+    column-gap:26px!important;
+  }
+  .planner-shell.is-month-view .month-study-group,
+  .planner-shell.is-month-view .month-study-group .todo-card,
+  .planner-shell.is-month-view .month-study-group .study-card{
+    width:100%;
+    min-width:0;
+    max-width:280px;
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  .planner-shell.is-month-view .month-study-group .card-heading{
+    width:100%;
+    min-width:0;
+    position:relative;
+    left:-52px;
+    width:calc(100% + 52px);
+  }
+  .planner-shell.is-month-view .month-study-group{
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  .planner-shell.is-month-view .month-study-group .todo-card,
+  .planner-shell.is-month-view .month-study-group .study-card{
+    padding-left:17px!important;
+    padding-right:17px!important;
+  }
+  .planner-shell.is-month-view .month-study-group .card-heading,
+  .planner-shell.is-month-view .month-study-group .todo-list,
+  .planner-shell.is-month-view .month-study-group .study-summary,
+  .planner-shell.is-month-view .month-study-group .study-legend{
+    position:relative;
+    left:-46px;
+    width:calc(100% + 46px);
+  }
+  .planner-shell.is-month-view .month-study-group{
+    width:100%!important;
+    max-width:280px!important;
+    margin-left:0!important;
+  }
+  .planner-shell.is-month-view .month-study-group .card-heading,
+  .planner-shell.is-month-view .month-study-group .card-heading>div,
+  .planner-shell.is-month-view .month-study-group .todo-list,
+  .planner-shell.is-month-view .month-study-group .study-summary,
+  .planner-shell.is-month-view .month-study-group .study-legend{
+    min-width:0;
+    max-width:100%;
+  }
+  .planner-shell.is-month-view .month-study-group .card-heading h2,
+  .planner-shell.is-month-view .month-study-group .selected-date,
+  .planner-shell.is-month-view .month-study-group .legend-item{
+    min-width:0;
+    max-width:100%;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .planner-shell.is-month-view .memo-card{
+    margin-top:0!important;
+  }
+  .planner-shell.is-month-view #monthView .calendar-card,
+  .planner-shell.is-month-view #monthView .calendar-grid{
+    overflow:visible;
+  }
+  .planner-shell.is-month-view #monthView .calendar-cell.has-goal-stamp{
+    min-height:0!important;
+    overflow:visible!important;
+  }
+  .planner-shell.is-month-view #monthView .calendar-cell .goal-stamp{
+    top:auto!important;
+    right:4px!important;
+    bottom:18px!important;
+    width:48px!important;
+    height:48px!important;
+    transform:translateY(-14px)!important;
+  }
+  .planner-shell.is-month-view .month-study-group{
+    grid-column:2;
+    grid-row:1 / span 2;
+    display:grid;
+    grid-template-columns:minmax(0,1fr);
+    grid-template-rows:auto auto;
+    gap:0;
+    min-height:0;
+    align-self:start;
+    height:max-content;
+    border:1px solid rgba(97,82,65,.2);
+    border-radius:15px 11px 17px 13px;
+    background:rgba(255,253,248,.58);
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .planner-shell.is-month-view .month-study-group .todo-card{
+    grid-column:1;
+    grid-row:1;
+    min-height:0;
+    margin:0;
+    height:auto!important;
+    border:0!important;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none!important;
+  }
+  .planner-shell.is-month-view .month-study-group .study-card{
+    grid-column:1;
+    grid-row:2;
+    min-height:0!important;
+    height:auto!important;
+    margin:0!important;
+    transform:none!important;
+    border:0!important;
+    border-top:1px dashed var(--line)!important;
+    border-radius:0;
+    background:transparent;
+    box-shadow:none!important;
+  }
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .planner-layout{
+    display:grid;
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-columns:minmax(0,1fr) minmax(280px,340px);
+    grid-template-rows:minmax(0,2fr) minmax(160px,1fr);
+    align-items:stretch;
+    overflow:visible;
+    transform:none;
+  }
+  .planner-shell.is-month-view .calendar-area{
+    grid-column:1;
+    grid-row:1;
+    min-height:0;
+    height:100%;
+    transform:translateY(calc(-.5cm / var(--planner-scale)));
+  }
+  .planner-shell.is-month-view #monthView,
+  .planner-shell.is-month-view #monthView .calendar-card{
+    height:100%;
+    min-height:0;
+  }
+  .planner-shell.is-month-view #monthView .calendar-card{display:flex;flex-direction:column}
+  .planner-shell.is-month-view #monthView .calendar-grid{
+    flex:1 1 auto;
+    min-height:0;
+    grid-template-rows:repeat(5,minmax(0,1fr));
+  }
+  .planner-shell.is-month-view #monthView .calendar-cell{height:auto;min-height:0}
+  .planner-shell.is-month-view .todo-card{grid-column:2;grid-row:1}
+  .planner-shell.is-month-view .study-card{
+    grid-column:2;
+    grid-row:2;
+    align-self:stretch;
+    min-height:0;
+    height:100%!important;
+    margin:0!important;
+    transform:none!important;
+    overflow:visible;
+  }
+  .planner-shell.is-month-view .memo-card{
+    grid-column:1;
+    grid-row:2;
+    align-self:stretch;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    margin-bottom:calc(.7cm / var(--planner-scale));
+    transform:none;
+    overflow:visible!important;
+  }
+  .planner-shell.is-month-view .memo-card>textarea{height:100%!important;min-height:0!important}
+}
+
+/* Schedules must not push the stamp through the card contents. Keep the
+   current card-relative geometry, and soften the stamp only when text is
+   present underneath it. */
+@media (orientation:landscape){
+  .planner-shell.is-week-view .week-card .goal-stamp,
+  .planner-shell.is-month-view #monthView .calendar-cell .goal-stamp{
+    position:absolute!important;
+  }
+}
+.planner-shell.is-week-view .week-card:has(.week-schedule-list) .goal-stamp{
+  opacity:.86;
+  filter:brightness(0) saturate(100%) invert(40%) sepia(93%) saturate(2770%) hue-rotate(335deg) brightness(102%) contrast(101%);
+}
+
+/* Use a separate warm ink color for stamps in the week view. */
+.planner-shell.is-week-view .week-card .goal-stamp{
+  filter:brightness(0) saturate(100%) invert(40%) sepia(93%) saturate(2770%) hue-rotate(335deg) brightness(102%) contrast(101%);
+}
+
+.planner-shell.is-month-view #monthView .calendar-cell .goal-stamp{
+  filter:brightness(0) saturate(100%) invert(40%) sepia(93%) saturate(2770%) hue-rotate(335deg) brightness(102%) contrast(101%);
+}
+
+/* Keep the schedule in place, but render it above the stamp layer. */
+.planner-shell.is-week-view .week-card .week-schedule-list{
+  position:relative;
+  z-index:3;
+}
+
+/* Keep monthly schedule text aligned from a fixed left edge. */
+.planner-shell.is-month-view #monthView .schedule-preview-item,
+.planner-shell.is-month-view .schedule-preview-content{
+  text-align:left;
+  justify-content:flex-start;
+}
+.planner-shell.is-month-view .schedule-preview-content>span{
+  flex:1 1 auto;
+  min-width:0;
+  text-align:left;
+}
+
+/* Match the monthly checklist's left and right inset to the weekly card. */
+.planner-shell.is-month-view .month-study-group .todo-list{
+  left:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  margin-left:0!important;
+  margin-right:0!important;
+}
+.planner-shell.is-month-view .month-study-group{
+  overflow:hidden!important;
+}
+.planner-shell.is-month-view .month-study-group .todo-card .card-heading{
+  left:0!important;
+  width:100%!important;
+}
+.planner-shell.is-month-view .month-study-group .study-card .card-heading,
+.planner-shell.is-month-view .month-study-group .study-card .study-summary,
+.planner-shell.is-month-view .month-study-group .study-card .study-legend{
+  left:0!important;
+  width:100%!important;
+}
+.planner-shell.is-month-view .month-study-group .todo-list{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  min-width:0!important;
+  width:100%!important;
+}
+.planner-shell.is-month-view .month-study-group .todo-list>li{
+  min-width:0;
+  width:100%;
+  max-width:100%;
+  box-sizing:border-box;
+}
+.planner-shell.is-month-view .month-study-group .schedule-period-more{
+  padding:4px 7px;
+  color:var(--deep);
+  font-family:PlannerChecklistFont,"Segoe Print","Malgun Gothic",sans-serif;
+  font-size:calc(.9rem * var(--font-ratio));
+  text-align:left;
+}
+.planner-shell.is-month-view .month-study-group .checklist-input,
+.planner-shell.is-month-view .month-study-group .schedule-preview-content>span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.planner-shell.is-month-view .month-study-group .card-heading{
+  min-width:0;
+  justify-content:flex-start;
+  text-align:left;
+}
+.planner-shell.is-month-view .month-study-group .card-heading>div{
+  min-width:0;
+  flex:1 1 auto;
+  text-align:left;
+}
+.planner-shell.is-month-view .month-study-group .card-heading h2{
+  text-align:left;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.planner-shell.is-month-view .month-study-group .todo-card,
+.planner-shell.is-month-view .month-study-group .study-card{
+  position:relative;
+  box-sizing:border-box;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+.planner-shell.is-month-view .month-study-group .todo-card{
+  grid-column:1;
+  grid-row:1;
+}
+.planner-shell.is-month-view .month-study-group .study-card{
+  grid-column:1;
+  grid-row:2;
+}
+.planner-shell.is-month-view .month-study-group{
+  grid-template-columns:minmax(0,1fr)!important;
+  min-width:0!important;
+  contain:layout inline-size;
+  width:280px!important;
+  max-width:280px!important;
+}
+.planner-shell.is-month-view .month-study-group .todo-card,
+.planner-shell.is-month-view .month-study-group .study-card{
+  justify-self:stretch!important;
+  align-self:stretch!important;
+}
+
+@media (orientation:landscape){
+  .planner-shell.is-month-view .month-study-group{
+    display:grid!important;
+    grid-column:2!important;
+    grid-row:1 / span 2!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    align-self:start!important;
+    height:max-content!important;
+  }
+  .planner-shell.is-month-view .month-study-group .todo-card{
+    grid-column:1!important;
+    grid-row:1!important;
+    height:auto!important;
+  }
+.planner-shell.is-month-view .month-study-group .study-card{
+  grid-column:1!important;
+  grid-row:2!important;
+  height:auto!important;
+  transform:none!important;
+}
+}
+
+/* Final timer-style scene scale: use the same 3:2 reference scene on every
+   display, without letting a second font-only scale alter the layout. */
+.planner-shell{
+  --font-ratio:1!important;
+  --planner-scale:clamp(.2,min(calc(100dvw / 1440px),calc(100dvh / 960px)),1)!important;
+  zoom:var(--planner-scale)!important;
+  aspect-ratio:3 / 2!important;
+  width:min(calc(1440px / var(--planner-scale)),calc((100vw - var(--planner-gutter) - var(--planner-gutter)) / var(--planner-scale)),calc((100dvh - var(--planner-gutter) - var(--planner-gutter)) * 1.5 / var(--planner-scale)))!important;
+  height:auto!important;
+  min-height:0!important;
+}
+
+/* Treat the planner as one fixed reference scene, like the timer image.
+   Child elements keep their design coordinates and only the scene scales. */
+.planner-shell{
+  width:1440px!important;
+  height:960px!important;
+  max-width:none!important;
+  min-height:0!important;
+  padding:42px!important;
+  margin:0 auto!important;
+  overflow:hidden!important;
+}
+
+/* Freeze the reference layout so viewport breakpoints cannot rearrange the
+   scene after it has been scaled. */
+.planner-shell .planner-layout{
+  gap:18px!important;
+}
+.planner-shell:not(.is-day-view) .planner-layout{
+  grid-template-columns:minmax(0,1fr) 280px!important;
+}
+.planner-shell.is-day-view .planner-layout{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(220px,1fr)!important;
+}
+.planner-shell .calendar-cell{min-height:115px}
+.planner-shell .week-card{min-height:245px}
+.planner-shell.is-month-view .memo-card{
+  height:210px!important;
+  min-height:210px!important;
+  max-height:210px!important;
+  margin-top:0!important;
+  margin-bottom:0!important;
+}
+.planner-shell.is-month-view .calendar-area{
+  transform:translateY(-.5cm)!important;
+}
+.planner-shell .planner-header{
+  grid-template-columns:1fr auto!important;
+  gap:26px!important;
+  align-items:end!important;
+}
+.planner-shell .view-switcher{
+  width:max-content!important;
+  justify-content:flex-start!important;
+}
+.planner-shell{
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+}
+
+/* The day view also keeps the same reference layout on phone-sized screens;
+   the complete scene scales instead of switching to a different mobile grid. */
+.planner-shell.is-day-view .calendar-area,
+.planner-shell.is-day-view .side-column{
+  display:contents!important;
+}
+.planner-shell.is-day-view .planner-layout{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,2fr) minmax(220px,1fr)!important;
+  grid-template-rows:max-content minmax(0,1fr)!important;
+  align-items:stretch!important;
+}
+.planner-shell.is-day-view .day-schedule-card{
+  grid-column:1!important;
+  grid-row:1!important;
+  display:block!important;
+}
+.planner-shell.is-day-view .study-card{
+  grid-column:2!important;
+  grid-row:1!important;
+  display:block!important;
+}
+.planner-shell.is-day-view .memo-card{
+  grid-column:1!important;
+  grid-row:2!important;
+  display:flex!important;
+  min-height:0!important;
+  height:100%!important;
+}
+.planner-shell.is-day-view .feedback-card{
+  grid-column:2!important;
+  grid-row:2!important;
+  display:flex!important;
+  min-height:0!important;
+  height:100%!important;
+}
+.planner-shell.is-day-view .todo-card{
+  grid-column:3!important;
+  grid-row:1 / span 2!important;
+}
+.planner-shell.is-day-view #dayView{
+  grid-column:4!important;
+  grid-row:1 / span 2!important;
+  height:100%!important;
+  min-height:0!important;
+}
+.planner-shell.is-day-view .day-card{
+  height:100%!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+}
+.planner-shell.is-day-view .time-grid{
+  flex:1!important;
+  min-height:0!important;
+  height:auto!important;
+  display:grid!important;
+  grid-template-rows:repeat(25,minmax(0,1fr))!important;
+}
+.planner-shell.is-day-view .time-grid-row{min-height:0!important}
+.planner-shell.is-day-view .slot-grid{height:100%!important}
+.planner-shell.is-day-view .time-slot{height:100%!important}
+.planner-shell.is-day-view .daily-total-card{display:none!important}
+.planner-shell.is-day-view{
+  --day-font-scale:1!important;
+}
+.planner-shell.is-day-view .time-grid-row{
+  grid-template-columns:76px max-content!important;
+  gap:6px!important;
+}
+.planner-shell.is-day-view .slot-grid{
+  grid-template-columns:repeat(6,.64cm)!important;
+}
+.planner-shell.is-day-view .time-slot{
+  width:.64cm!important;
+}
+.planner-shell.is-day-view .checklist-row,
+.planner-shell.is-day-view .checklist-content{
+  min-width:0!important;
+  width:100%!important;
+  overflow:hidden!important;
+}
+.planner-shell.is-day-view .checklist-row{
+  box-sizing:border-box;
+}
+.planner-shell.is-day-view .checklist-content{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 54px 18px!important;
+  gap:3px!important;
+  align-items:center;
+  padding:0 4px!important;
+}
+.planner-shell.is-day-view .checklist-subject{
+  grid-column:2;
+  flex:none!important;
+  width:54px!important;
+  min-width:0!important;
+  max-width:54px!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.planner-shell.is-day-view .checklist-input{
+  grid-column:1;
+  flex:none!important;
+  width:auto!important;
+  min-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.planner-shell.is-day-view .checklist-check{
+  grid-column:3;
+  width:18px!important;
+  max-width:18px!important;
+  transform:translateX(-6px)!important;
+}
+.planner-shell.is-day-view .todo-card,
+.planner-shell.is-day-view .todo-card .todo-list{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+}
+.planner-shell.is-day-view .todo-card{
+  width:100%!important;
+  justify-self:start!important;
+  transform:none!important;
+}
+.planner-shell .brand-title-row h1{
+  font-size:1.65rem!important;
+}
+
+/* Portrait screens use a real vertical flow so cards stay readable instead
+   of shrinking the whole landscape reference scene into a narrow strip. */
+@media (orientation:portrait) and (max-width:900px){
+  html,body{overflow-x:hidden}
+  .planner-shell{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    width:calc(100vw - 18px)!important;
+    height:auto!important;
+    min-height:calc(100dvh - 18px)!important;
+    max-width:none!important;
+    margin:9px auto!important;
+    padding:16px 11px!important;
+    aspect-ratio:auto!important;
+    zoom:1!important;
+    transform:none!important;
+    overflow:visible!important;
+  }
+  .planner-shell .planner-header{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+    padding-bottom:16px!important;
+  }
+  .planner-shell .view-switcher{
+    width:100%!important;
+    justify-content:center!important;
+  }
+  .planner-shell .planner-layout{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    gap:12px!important;
+  }
+  .planner-shell .calendar-area{
+    display:block!important;
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:1!important;
+    transform:none!important;
+  }
+  .planner-shell .side-column{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+    order:2!important;
+  }
+  .planner-shell .month-study-group{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;
+    max-width:none!important;
+    gap:12px!important;
+  }
+  .planner-shell .month-study-group .todo-card,
+  .planner-shell .month-study-group .study-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell .week-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+    overflow:visible!important;
+  }
+  .planner-shell .week-card{min-height:150px!important}
+
+  /* Daily cards become a readable vertical sequence on portrait screens. */
+  .planner-shell.is-day-view .planner-layout{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+  }
+  .planner-shell.is-day-view .calendar-area,
+  .planner-shell.is-day-view .side-column{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:12px!important;
+  }
+  .planner-shell.is-day-view #dayView{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:1!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .planner-shell.is-day-view .day-schedule-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:1!important;
+    display:block!important;
+  }
+  .planner-shell.is-day-view .todo-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:2!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .study-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:3!important;
+    display:block!important;
+  }
+  .planner-shell.is-day-view .memo-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:4!important;
+    display:flex!important;
+    height:auto!important;
+    min-height:220px!important;
+  }
+  .planner-shell.is-day-view .feedback-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    order:5!important;
+    display:flex!important;
+    height:auto!important;
+    min-height:220px!important;
+  }
+  .planner-shell.is-day-view .time-grid{
+    width:100%!important;
+    max-width:100%!important;
+    transform:none!important;
+    margin:0!important;
+  }
+  .planner-shell.is-day-view .time-grid-row{
+    grid-template-columns:58px minmax(0,1fr)!important;
+    gap:6px!important;
+  }
+  .planner-shell.is-day-view .slot-grid{
+    width:100%!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  }
+  .planner-shell.is-day-view .time-slot{
+    width:auto!important;
+  }
+}
+
+/* Scale the complete reference scene once. This keeps every child at its
+   design coordinates and prevents zoom plus responsive rules from distorting
+   the proportions. */
+.planner-shell{
+  position:absolute!important;
+  top:50%!important;
+  left:50%!important;
+  margin:0!important;
+  zoom:1!important;
+  transform:translate(-50%,-50%) scale(var(--planner-scale))!important;
+  transform-origin:center center!important;
+}
+
+/* Final portrait override: the landscape scene transform must not win over
+   the portrait card flow above. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    margin:9px auto!important;
+    zoom:1!important;
+    transform:none!important;
+  }
+}
+
+/* On portrait daily view, let the cards participate in one vertical flow so
+   the schedule and checklist are not pushed below the first viewport. */
+@media (orientation:portrait) and (max-width:900px){
+  .planner-shell.is-day-view .calendar-area,
+  .planner-shell.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view .day-schedule-card{
+    display:block!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view .todo-card{
+    display:block!important;
+    order:2!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .study-card{
+    display:block!important;
+    order:3!important;
+  }
+  .planner-shell.is-day-view #dayView{
+    display:block!important;
+    order:4!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .planner-shell.is-day-view .memo-card{
+    display:flex!important;
+    order:5!important;
+  }
+  .planner-shell.is-day-view .feedback-card{
+    display:flex!important;
+    order:6!important;
+  }
+}
+
+/* Final portrait layout corrections for month/week width and page scroll. */
+@media (orientation:portrait) and (max-width:900px){
+  html:has(.planner-shell),
+  body:has(.planner-shell){
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  .planner-shell.is-month-view .planner-layout,
+  .planner-shell.is-week-view .planner-layout{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:auto auto!important;
+    width:100%!important;
+  }
+  .planner-shell.is-month-view .month-study-group{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+  }
+  .planner-shell.is-month-view .month-study-group .todo-card,
+  .planner-shell.is-month-view .month-study-group .study-card{
+    width:100%!important;
+    max-width:none!important;
+    min-width:0!important;
+    transform:none!important;
+  }
+  .planner-shell.is-week-view .week-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+  .planner-shell.is-month-view .calendar-area,
+  .planner-shell.is-month-view #monthView,
+  .planner-shell.is-week-view .calendar-area,
+  .planner-shell.is-week-view #weekView{
+    min-width:0!important;
+    width:100%!important;
+  }
+  .planner-shell.is-month-view .calendar-cell{
+    min-height:76px!important;
+    height:auto!important;
+    padding:6px!important;
+  }
+  .planner-shell.is-month-view .calendar-grid{
+    gap:4px!important;
+  }
+  .planner-shell.is-month-view .planner-layout{
+    transform:none!important;
+    margin-top:12px!important;
+  }
+  .planner-shell.is-month-view .calendar-cell .goal-stamp{
+    right:2px!important;
+    bottom:2px!important;
+    width:36px!important;
+    height:36px!important;
+  }
+  .planner-shell.is-month-view .calendar-cell,
+  .planner-shell.is-month-view .cell-meta,
+  .planner-shell.is-month-view .schedule-preview,
+  .planner-shell.is-month-view .schedule-preview-item,
+  .planner-shell.is-week-view .week-card,
+  .planner-shell.is-week-view .week-schedule-list{
+    min-width:0!important;
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+  }
+  .planner-shell.is-month-view .cell-meta,
+  .planner-shell.is-month-view .schedule-preview-item,
+  .planner-shell.is-week-view .week-schedule-item,
+  .planner-shell.is-week-view .week-schedule-more{
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+  .planner-shell.is-month-view .card-heading,
+  .planner-shell.is-week-view .card-heading,
+  .planner-shell.is-day-view .card-heading{
+    min-width:0!important;
+  }
+  .planner-shell.is-month-view .card-heading>div,
+  .planner-shell.is-week-view .card-heading>div,
+  .planner-shell.is-day-view .card-heading>div{
+    min-width:0!important;
+    flex:1 1 auto!important;
+    writing-mode:horizontal-tb!important;
+  }
+  .planner-shell.is-month-view .card-heading h2,
+  .planner-shell.is-week-view .card-heading h2,
+  .planner-shell.is-day-view .card-heading h2{
+    writing-mode:horizontal-tb!important;
+    text-orientation:mixed!important;
+    white-space:normal!important;
+    overflow:visible!important;
+  }
+}
+
+/* Final portrait sizing pass. */
+@media (orientation:portrait) and (min-width:481px), (max-aspect-ratio:1/1) and (min-width:481px){
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .planner-layout{
+    display:grid!important;
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+    column-gap:10px!important;
+    row-gap:8px!important;
+    width:100%!important;
+    max-width:none!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .calendar-area,
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view #dayView{
+    grid-column:1!important;
+    grid-row:1!important;
+    width:max-content!important;
+    max-width:100%!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .todo-card{
+    grid-column:2!important;
+    grid-row:1!important;
+    width:100%!important;
+    min-width:0!important;
+    justify-self:stretch!important;
+    margin-left:0!important;
+    margin-right:0!important;
+    order:2!important;
+    --checklist-gap-fill:clamp(20px,45vw,340px);
+    transform:translateX(calc(-1 * var(--checklist-gap-fill)))!important;
+    width:calc(100% + var(--checklist-gap-fill))!important;
+  }
+
+  @media (orientation:portrait) and (max-width:480px){
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .planner-layout{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr)!important;
+      grid-template-rows:none!important;
+      gap:12px!important;
+    }
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .calendar-area,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .side-column{
+      display:contents!important;
+    }
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view #dayView,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .todo-card,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .day-schedule-card,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .study-card,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .memo-card,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card{
+      grid-column:auto!important;
+      width:100%!important;
+      transform:none!important;
+      margin-left:0!important;
+      margin-right:0!important;
+    }
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .day-schedule-card{order:1!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .todo-card{order:2!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .study-card{order:3!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view #dayView{order:4!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .memo-card{order:5!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card{order:6!important}
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .todo-card{
+      --checklist-gap-fill:0px;
+      width:100%!important;
+    }
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .memo-card,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr)!important;
+      grid-template-rows:auto auto minmax(0,1fr)!important;
+      min-height:220px!important;
+      padding:17px!important;
+    }
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .memo-card>textarea,
+    .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card>textarea{
+      grid-column:1!important;
+      grid-row:3!important;
+      width:100%!important;
+      height:100%!important;
+      min-height:0!important;
+    }
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .study-card{
+    grid-column:1!important;
+    grid-row:2!important;
+    width:100%!important;
+    order:3!important;
+    justify-self:start!important;
+    margin-left:0!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .day-schedule-card{
+    grid-column:2!important;
+    grid-row:2!important;
+    width:100%!important;
+    order:4!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .memo-card{
+    grid-column:1!important;
+    grid-row:3!important;
+    width:100%!important;
+    order:5!important;
+  }
+  .planner-shell.is-day-view.is-day-view.is-day-view.is-day-view .feedback-card{
+    grid-column:2!important;
+    grid-row:3!important;
+    width:100%!important;
+    order:6!important;
+  }
+  .planner-shell.is-day-view.is-day-view .planner-layout{
+    display:grid!important;
+    grid-template-columns:max-content minmax(0,1fr)!important;
+    grid-template-rows:auto auto auto!important;
+    column-gap:12px!important;
+    row-gap:8px!important;
+  }
+  .planner-shell.is-day-view.is-day-view .calendar-area,
+  .planner-shell.is-day-view.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view.is-day-view #dayView{
+    grid-column:1!important;
+    grid-row:1!important;
+    width:max-content!important;
+    max-width:100%!important;
+    justify-self:start!important;
+    order:1!important;
+  }
+  .planner-shell.is-day-view.is-day-view .todo-card{
+    grid-column:2!important;
+    grid-row:1!important;
+    width:100%!important;
+    order:2!important;
+  }
+  .planner-shell.is-day-view.is-day-view .day-schedule-card{
+    grid-column:1!important;
+    grid-row:2!important;
+    order:3!important;
+  }
+  .planner-shell.is-day-view.is-day-view .study-card{
+    grid-column:2!important;
+    grid-row:2!important;
+    order:4!important;
+  }
+  .planner-shell.is-day-view.is-day-view .memo-card{
+    grid-column:1!important;
+    grid-row:3!important;
+    order:5!important;
+  }
+  .planner-shell.is-day-view.is-day-view .feedback-card{
+    grid-column:2!important;
+    grid-row:3!important;
+    order:6!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-grid{
+    width:max-content!important;
+    max-width:100%!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-grid-row{
+    grid-template-columns:clamp(52px,10vw,76px) max-content!important;
+  }
+  .planner-shell.is-day-view.is-day-view .slot-grid{
+    width:max-content!important;
+    grid-template-columns:repeat(6,.64cm)!important;
+  }
+  .planner-shell.is-day-view.is-day-view .time-slot{
+    width:.64cm!important;
+    height:.64cm!important;
+  }
+  html:has(.planner-shell),
+  body:has(.planner-shell){
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+  .planner-shell,
+  .planner-shell.is-month-view,
+  .planner-shell.is-week-view,
+  .planner-shell.is-day-view{
+    position:relative!important;
+    top:auto!important;
+    left:auto!important;
+    right:auto!important;
+    width:calc(100vw - 18px)!important;
+    height:auto!important;
+    min-height:calc(100dvh - 18px)!important;
+    max-width:none!important;
+    margin:9px auto!important;
+    padding:clamp(10px,3vw,16px)!important;
+    aspect-ratio:auto!important;
+    zoom:1!important;
+    transform:none!important;
+    overflow:visible!important;
+  }
+  .planner-shell .planner-header{
+    grid-template-columns:1fr!important;
+    gap:clamp(10px,3vw,14px)!important;
+    padding-bottom:clamp(12px,3vw,16px)!important;
+  }
+  .planner-shell .view-switcher{
+    width:100%!important;
+    justify-content:center!important;
+  }
+  .planner-shell .planner-layout,
+  .planner-shell.is-month-view .planner-layout,
+  .planner-shell.is-week-view .planner-layout,
+  .planner-shell.is-day-view .planner-layout{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    gap:12px!important;
+    width:100%!important;
+    margin:clamp(8px,3vw,14px) auto 0!important;
+    transform:none!important;
+    justify-items:stretch!important;
+  }
+  .planner-shell .calendar-area,
+  .planner-shell .side-column{
+    width:100%!important;
+    margin:0!important;
+  }
+  .planner-shell.is-month-view .calendar-area,
+  .planner-shell.is-week-view .calendar-area{
+    display:block!important;
+    order:1!important;
+    transform:none!important;
+  }
+  .planner-shell.is-month-view .side-column,
+  .planner-shell.is-week-view .side-column{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    order:2!important;
+    gap:12px!important;
+  }
+  .planner-shell .month-study-group{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    width:100%!important;
+    max-width:none!important;
+    gap:12px!important;
+  }
+  .planner-shell .month-study-group .todo-card,
+  .planner-shell .month-study-group .study-card{
+    grid-column:auto!important;
+    grid-row:auto!important;
+    width:100%!important;
+    max-width:none!important;
+    transform:none!important;
+  }
+  .planner-shell .week-grid{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-rows:none!important;
+    width:100%!important;
+    overflow:visible!important;
+  }
+  .planner-shell.is-day-view .calendar-area,
+  .planner-shell.is-day-view .side-column{
+    display:contents!important;
+  }
+  .planner-shell.is-day-view .day-schedule-card{
+    display:block!important;
+    order:1!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view .todo-card{
+    display:block!important;
+    order:2!important;
+    width:100%!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .study-card{
+    display:block!important;
+    order:3!important;
+    width:100%!important;
+  }
+  .planner-shell.is-day-view #dayView{
+    display:block!important;
+    order:4!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  .planner-shell.is-day-view .memo-card,
+  .planner-shell.is-day-view .feedback-card{
+    display:grid!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:220px!important;
+  }
+  .planner-shell.is-day-view .memo-card{order:5!important}
+  .planner-shell.is-day-view .feedback-card{order:6!important}
+  .planner-shell.is-day-view .time-grid{
+    width:100%!important;
+    max-width:100%!important;
+    margin:0!important;
+    transform:none!important;
+  }
+  .planner-shell.is-day-view .time-grid-row{
+    grid-template-columns:clamp(52px,10vw,76px) minmax(0,1fr)!important;
+    gap:6px!important;
+  }
+  .planner-shell.is-day-view .slot-grid{
+    width:100%!important;
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  }
+  .planner-shell.is-day-view .time-slot{width:auto!important}
+  .planner-shell{
+    padding:clamp(10px,3vw,16px) clamp(8px,3vw,16px)!important;
+  }
+  .planner-shell .planner-header{
+    gap:clamp(10px,3vw,14px)!important;
+    padding-bottom:clamp(12px,3vw,16px)!important;
+  }
+  .planner-shell.is-month-view .planner-layout{
+    margin-top:clamp(8px,3vw,14px)!important;
+  }
+  .planner-shell.is-month-view .calendar-grid{
+    gap:clamp(3px,1vw,5px)!important;
+  }
+  .planner-shell.is-month-view .calendar-cell{
+    min-height:clamp(64px,19vw,82px)!important;
+    padding:clamp(4px,1.5vw,7px)!important;
+  }
+  .planner-shell.is-month-view .calendar-cell .goal-stamp{
+    width:clamp(30px,9vw,38px)!important;
+    height:clamp(30px,9vw,38px)!important;
+    right:clamp(1px,1vw,3px)!important;
+    bottom:clamp(1px,1vw,3px)!important;
+  }
+  .planner-shell.is-month-view .cell-meta,
+  .planner-shell.is-month-view .schedule-preview{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+  .planner-shell.is-month-view .schedule-preview{
+    max-height:2.35em!important;
+    font-size:clamp(.78rem,3vw,1rem)!important;
+  }
+  .planner-shell.is-week-view .week-card{
+    min-height:clamp(120px,31vw,170px)!important;
+  }
+  .planner-shell.is-day-view .checklist-content{
+    grid-template-columns:minmax(0,1fr) clamp(44px,14vw,54px) 18px!important;
+  }
+  .planner-shell.is-day-view .checklist-subject{
+    width:clamp(44px,14vw,54px)!important;
+    max-width:clamp(44px,14vw,54px)!important;
+  }
+  .planner-shell.is-day-view .paper-card,
+  .planner-shell.is-day-view .day-card,
+  .planner-shell.is-month-view .paper-card,
+  .planner-shell.is-month-view .calendar-card,
+  .planner-shell.is-week-view .paper-card,
+  .planner-shell.is-week-view .week-card{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+}

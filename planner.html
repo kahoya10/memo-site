@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>스테디 플래너</title>
+    <link rel="stylesheet" href="planner.css?v=rebuild-258" />
+  </head>
+  <body>
+    <main class="planner-shell">
+      <header class="planner-header">
+        <div>
+          <p class="eyebrow">STUDY PLANNER</p>
+          <div class="brand-title-row">
+            <h1>스터디 플래너</h1>
+            <div class="brand-period"><h2 id="periodTitle"></h2><p id="focusDateLabel"></p></div>
+          </div>
+        </div>
+        <nav class="view-switcher" aria-label="보기 전환">
+          <button type="button" class="view-button is-active" data-view="month">달</button>
+          <button type="button" class="view-button" data-view="week">주</button>
+          <button type="button" class="view-button" data-view="day">일</button>
+        </nav>
+      </header>
+
+      <section class="period-toolbar" aria-label="기간 이동">
+        <button class="icon-button" id="previousPeriod" type="button" aria-label="이전">‹</button>
+        <button class="icon-button" id="nextPeriod" type="button" aria-label="다음">›</button>
+        <button class="today-button" id="todayButton" type="button">오늘로</button>
+      </section>
+
+      <div class="planner-layout">
+        <section class="calendar-area" aria-live="polite">
+          <section class="paper-card daily-total-card">
+            <p class="card-kicker">TOTAL STUDY</p>
+            <div class="daily-total-row"><h2>총 공부량</h2><strong id="dailyTotalStudy">00시간 00분</strong></div>
+          </section>
+          <div id="monthView"></div>
+          <div id="weekView" hidden></div>
+          <div id="dayView" hidden></div>
+        </section>
+
+        <aside class="side-column">
+          <section class="paper-card todo-card">
+            <div class="card-heading">
+              <div><p class="card-kicker">CHECK LIST</p><h2 id="todoCardTitle">월간 일정</h2></div>
+              <span class="selected-date" id="todoDateLabel"></span>
+            </div>
+            <ul class="todo-list" id="todoList"></ul>
+          </section>
+
+          <section class="paper-card day-schedule-card">
+            <div class="card-heading">
+              <div><p class="card-kicker">TODAY SCHEDULE</p><h2>오늘 일정</h2></div>
+              <span class="selected-date" id="dayScheduleDateLabel"></span>
+            </div>
+            <ul class="day-schedule-list" id="dayScheduleList"></ul>
+          </section>
+
+          <section class="paper-card memo-card" id="memoCard">
+            <p class="card-kicker">MEMO</p>
+            <h2 class="memo-title">메모</h2>
+            <div class="planner-ink-editor" data-ink-field="memo">
+              <textarea id="memoInput" aria-label="메모"></textarea>
+              <canvas class="planner-ink-canvas" aria-label="메모 펜 입력 영역" hidden></canvas>
+              <div class="planner-ink-controls" data-ink-controls="memo" hidden>
+                <button class="planner-ink-mode is-active" type="button" data-ink-mode="text">텍스트</button>
+                <button class="planner-ink-mode" type="button" data-ink-mode="ink">펜</button>
+                <div class="planner-ink-palette" hidden></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="paper-card feedback-card">
+            <p class="card-kicker">FEEDBACK</p>
+            <h2 class="memo-title">피드백</h2>
+            <div class="planner-ink-editor" data-ink-field="feedback">
+              <textarea id="feedbackInput" aria-label="피드백"></textarea>
+              <canvas class="planner-ink-canvas" aria-label="피드백 펜 입력 영역" hidden></canvas>
+              <div class="planner-ink-controls" data-ink-controls="feedback" hidden>
+                <button class="planner-ink-mode is-active" type="button" data-ink-mode="text">텍스트</button>
+                <button class="planner-ink-mode" type="button" data-ink-mode="ink">펜</button>
+                <div class="planner-ink-palette" hidden></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="paper-card study-card">
+            <div class="card-heading">
+              <div><p class="card-kicker">STUDY LOG</p><h2>공부 기록</h2></div>
+              <span class="selected-date" id="studyDateLabel"></span>
+            </div>
+            <div class="study-summary">
+              <div class="pie-chart" id="studyPie" aria-label="과목별 공부 비율"></div>
+              <div class="study-total"><strong id="studyTotal">00:00</strong><span id="studyPeriodLabel"></span></div>
+            </div>
+            <label class="subject-picker"><span>시간표 과목</span><select id="subjectSelect" aria-label="시간표 과목">
+              <option value="korean">국어</option><option value="math">수학</option><option value="english">영어</option>
+              <option value="science">과학</option><option value="social">사회</option><option value="etc">기타</option>
+            </select></label>
+            <div class="study-legend" id="studyLegend"></div>
+          </section>
+        </aside>
+      </div>
+
+      <dialog class="planner-dialog" id="scheduleDialog">
+        <div class="dialog-card">
+          <p class="card-kicker">SCHEDULE</p><h2>일정 추가</h2>
+          <p class="dialog-date" id="scheduleDialogDate"></p>
+          <form id="scheduleForm"><input id="scheduleInput" maxlength="80" placeholder="이 날의 일정" aria-label="일정 입력" />
+            <div class="dialog-actions"><button type="button" id="scheduleCancel">취소</button><button type="submit">추가</button></div>
+          </form>
+        </div>
+      </dialog>
+
+      <dialog class="planner-dialog" id="timeBlockDialog">
+        <div class="dialog-card">
+          <p class="card-kicker">CHECK LIST</p><h2>체크리스트 번호 선택</h2>
+          <p class="dialog-date" id="timeBlockRange"></p>
+          <form id="timeBlockForm"><select id="timeBlockTodoSelect" aria-label="체크리스트 번호"></select>
+            <div class="dialog-actions"><button type="button" id="timeBlockCancel">취소</button><button type="submit">기록</button></div>
+          </form>
+        </div>
+      </dialog>
+    </main>
+    <script src="planner.js?v=rebuild-10"></script>
+  </body>
+</html>

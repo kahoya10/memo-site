@@ -1,0 +1,47 @@
+/* Leafy Green Garden - https://coolors.co/132a13-31572c-4f772d-90a955-ecf39e */
+
+/* CSS HEX */
+--evergreen: #132a13ff;
+--hunter-green: #31572cff;
+--fern: #4f772dff;
+--palm-leaf: #90a955ff;
+--lime-cream: #ecf39eff;
+
+/* CSS HSL */
+--evergreen: hsla(120, 38%, 12%, 1);
+--hunter-green: hsla(113, 33%, 26%, 1);
+--fern: hsla(92, 45%, 32%, 1);
+--palm-leaf: hsla(78, 33%, 50%, 1);
+--lime-cream: hsla(65, 78%, 79%, 1);
+
+/* SCSS HEX */
+$evergreen: #132a13ff;
+$hunter-green: #31572cff;
+$fern: #4f772dff;
+$palm-leaf: #90a955ff;
+$lime-cream: #ecf39eff;
+
+/* SCSS HSL */
+$evergreen: hsla(120, 38%, 12%, 1);
+$hunter-green: hsla(113, 33%, 26%, 1);
+$fern: hsla(92, 45%, 32%, 1);
+$palm-leaf: hsla(78, 33%, 50%, 1);
+$lime-cream: hsla(65, 78%, 79%, 1);
+
+/* SCSS RGB */
+$evergreen: rgba(19, 42, 19, 1);
+$hunter-green: rgba(49, 87, 44, 1);
+$fern: rgba(79, 119, 45, 1);
+$palm-leaf: rgba(144, 169, 85, 1);
+$lime-cream: rgba(236, 243, 158, 1);
+
+/* SCSS Gradient */
+$gradient-top: linear-gradient(0deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-right: linear-gradient(90deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-bottom: linear-gradient(180deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-left: linear-gradient(270deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-top-right: linear-gradient(45deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-bottom-right: linear-gradient(135deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-top-left: linear-gradient(225deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-bottom-left: linear-gradient(315deg, #132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);
+$gradient-radial: radial-gradient(#132a13ff, #31572cff, #4f772dff, #90a955ff, #ecf39eff);

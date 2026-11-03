@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4eee2" />
+    <title>서당개 타이머</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="scene" aria-label="서당개 공부 타이머">
+      <div class="ui-layer">
+      <section class="timer-panel" aria-label="타이머">
+        <div class="mode-badge" id="modeBadge">
+          <span id="modeName">일반 모드</span>
+          <small id="dailyAccumulation">오늘 누적 00시간 00분 00초</small>
+          <small id="mockSubjectLabel" hidden>현재: 국어</small>
+        </div>
+        <div class="timer-card" id="timerCard" role="timer" aria-live="polite">
+          <div class="time-primary" aria-label="시간을 직접 입력할 수 있습니다">
+            <label class="timer-part">
+              <span class="sr-only">시간</span>
+              <span class="time-value-wrap">
+                <input id="hours" class="time-input" type="text" value="00" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" aria-label="시간" />
+                <span class="unit" aria-hidden="true">시간</span>
+              </span>
+            </label>
+            <span class="colon" aria-hidden="true">:</span>
+            <label class="timer-part">
+              <span class="sr-only">분</span>
+              <span class="time-value-wrap minute-value-wrap">
+                <input id="minutes" class="time-input" type="text" value="00" inputmode="numeric" pattern="[0-9]*" maxlength="2" autocomplete="off" aria-label="분" />
+                <span class="unit" aria-hidden="true">분</span>
+                <span class="seconds-display" id="secondsDisplay" aria-label="초">00초</span>
+              </span>
+            </label>
+          </div>
+          <p class="seconds-hint" id="secondsHint">분 단위로 표시되는 타이머</p>
+        </div>
+        <div class="timer-subject-control" id="timerSubjectControl">
+          <button class="subject-display" id="timerSubjectDisplay" type="button" aria-haspopup="listbox">과목 선택</button>
+          <select id="timerSubject" aria-label="시작 과목">
+            <option value="">과목 선택</option>
+            <option value="korean">국어</option>
+            <option value="english">영어</option>
+            <option value="math">수학</option>
+            <option value="science">과학</option>
+            <option value="social">사회</option>
+            <option value="etc">기타</option>
+          </select>
+        </div>
+        <p class="phase-label" id="phaseLabel">시간을 입력하고 시작해 주세요</p>
+      </section>
+
+      <section class="quick-presets" id="quickPresets" aria-label="자주 쓰는 시간">
+        <span class="quick-presets-title">자주 쓰는 시간</span>
+        <div class="quick-preset-list" id="quickPresetList"></div>
+        <button class="quick-save" id="saveQuickPreset" type="button">＋ 저장</button>
+      </section>
+
+      <div class="mascot-wrap" aria-hidden="true"><img id="mascot" src="td1.png" alt="" /></div>
+
+      <nav class="timer-actions" aria-label="타이머 조작">
+        <button class="round-action mini-open-action" id="miniTimerButton" type="button" aria-controls="miniTimersLayer" aria-label="미니 타이머 추가">
+          <span class="action-icon" aria-hidden="true">＋</span>
+        </button>
+        <button class="round-action settings-action" id="settingsButton" type="button" aria-expanded="false" aria-controls="settingsPanel">
+          <span class="action-icon" aria-hidden="true">⚙</span><span>설정</span>
+        </button>
+        <button class="start-action" id="toggleButton" type="button" aria-label="타이머 시작">
+          <span class="play-icon" aria-hidden="true"></span><span id="toggleLabel">시작</span>
+        </button>
+        <button class="round-action reset-action" id="resetButton" type="button" aria-label="타이머 되돌리기">
+          <span class="action-icon reset-icon" aria-hidden="true">↶</span><span>되돌리기</span>
+        </button>
+      </nav>
+
+      <p class="status-text" id="statusText" aria-live="polite">시간을 클릭하면 직접 입력할 수 있어요</p>
+
+      <div class="settings-backdrop" id="settingsBackdrop" hidden></div>
+      <aside class="settings-panel" id="settingsPanel" aria-label="타이머 설정" hidden>
+        <div class="settings-header">
+          <div><p class="eyebrow">STUDY TIMER</p><h2>타이머 설정</h2></div>
+          <button class="close-button" id="closeSettings" type="button" aria-label="설정 닫기">×</button>
+        </div>
+
+        <fieldset class="setting-group mode-group">
+          <legend>모드</legend>
+          <div class="mode-options">
+            <label class="mode-option"><input type="radio" name="mode" value="normal" checked /><span><strong>일반</strong><small>원하는 시간만큼</small></span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="pomodoro" /><span><strong>뽀모도로</strong><small>25분 집중 · 5분 휴식</small></span></label>
+            <label class="mode-option"><input type="radio" name="mode" value="mock" /><span><strong>모의고사</strong><small>실전 시간표에 맞춰 알림</small></span></label>
+          </div>
+        </fieldset>
+
+        <div class="mode-detail" id="pomodoroOptions" hidden>
+          <label for="roundCount">회차 <span class="field-help">(1회 = 집중 25분 + 휴식 5분)</span></label>
+          <input id="roundCount" type="number" min="1" max="12" value="1" inputmode="numeric" />
+        </div>
+
+        <div class="mode-detail" id="mockOptions" hidden>
+          <label for="examSubject">시험 시간표</label>
+          <select id="examSubject">
+            <option value="full-day">하루 전체 시간표 · 08:40–17:10</option>
+            <option value="korean">국어 · 08:40–10:00 (80분)</option><option value="math">수학 · 10:30–12:10 (100분)</option><option value="english">영어 · 13:10–14:20 (70분)</option>
+            <option value="history">한국사 · 14:50–15:20 (30분)</option><option value="social">사회탐구 · 15:35–16:15 (40분)</option><option value="science">과학탐구 · 16:30–17:10 (40분)</option>
+          </select>
+          <p class="field-help exam-note">고1·고2 전국연합학력평가 기준 · 전체 시간표는 쉬는 시간 포함</p>
+        </div>
+
+        <fieldset class="setting-group sound-group">
+          <legend>종료 알림</legend>
+          <div class="sound-options">
+            <label><input type="radio" name="sound" value="mute" checked /><span>무음</span></label>
+            <label><input type="radio" name="sound" value="5" /><span>5초</span></label>
+            <label><input type="radio" name="sound" value="10" /><span>10초</span></label>
+            <label><input type="radio" name="sound" value="until-reset" /><span>되돌릴 때까지</span></label>
+          </div>
+        </fieldset>
+        <button class="save-settings" id="saveSettings" type="button">설정 저장</button>
+      </aside>
+      <div class="mini-timers-layer" id="miniTimersLayer" aria-label="미니 타이머 목록"></div>
+      </div>
+    </main>
+    <script src="script.js"></script>
+  </body>
+</html>

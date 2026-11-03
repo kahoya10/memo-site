@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ notebook.title }} · 필기{% endblock %}
+{% block body_class %}editor-page{% endblock %}
+{% block content %}
+<section id="editorApp" class="editor-shell"
+  data-save-url="{% url 'notes:page_save' current_page.id %}"
+  data-preferences-url="{% url 'notes:drawing_preferences_save' %}"
+  data-previous-page-url="{% if previous_page %}{% url 'notes:page_editor' notebook.id previous_page.id %}{% endif %}"
+  data-next-page-url="{% if next_page %}{% url 'notes:page_editor' notebook.id next_page.id %}{% endif %}"
+  data-current-page-id="{{ current_page.id }}"
+  data-readonly="{% if notebook.owner_id == user.id %}false{% else %}true{% endif %}">
+  <aside class="page-drawer" aria-label="공책 목차">
+    <div class="drawer-head">
+      <a href="{% url 'notes:library' %}" class="back-link">← 공책 목록</a>
+      {% if notebook.owner_id == user.id %}
+        <button class="editable-title notebook-title-display" type="button" data-title-edit-target="notebook-title-form" title="눌러서 공책 제목 수정">{{ notebook.title }}</button>
+        <form id="notebook-title-form" class="notebook-title-form" action="{% url 'notes:notebook_rename' notebook.id %}" method="post" data-title-edit-form hidden>
+          {% csrf_token %}<input type="hidden" name="page_id" value="{{ current_page.id }}"><input name="title" value="{{ notebook.title }}" maxlength="80" aria-label="공책 제목"><button type="submit" aria-label="공책 제목 저장">저장</button><button class="title-edit-cancel" type="button" data-title-edit-cancel>취소</button>
+        </form>
+      {% else %}<strong>{{ notebook.title }}</strong>{% endif %}
+      <small>{{ notebook.subject }}</small>
+    </div>
+    <div class="chapter-list">
+      {% for chapter in chapters %}
+        <section class="chapter-group" data-chapter-id="{{ chapter.id }}">
+          <div class="chapter-heading-row">
+            {% if notebook.owner_id == user.id %}<button class="editable-title chapter-title-display" type="button" data-title-edit-target="chapter-title-form-{{ chapter.id }}" title="눌러서 챕터 제목 수정">{{ chapter.title }}</button>{% else %}<span class="chapter-title-display">{{ chapter.title }}</span>{% endif %}
+            <button class="chapter-toggle" type="button" aria-expanded="false" aria-controls="chapter-pages-{{ chapter.id }}" aria-label="{{ chapter.title }} 페이지 목록 펼치기"><b aria-hidden="true">+</b></button>
+          </div>
+          {% if notebook.owner_id == user.id %}
+            <form id="chapter-title-form-{{ chapter.id }}" class="chapter-title-form" action="{% url 'notes:chapter_rename' chapter.id %}" method="post" data-title-edit-form hidden>
+              {% csrf_token %}<input type="hidden" name="page_id" value="{{ current_page.id }}"><input name="title" value="{{ chapter.title }}" maxlength="80" aria-label="챕터 제목"><button type="submit">저장</button><button class="title-edit-cancel" type="button" data-title-edit-cancel>취소</button>
+            </form>
+          {% endif %}
+          <div id="chapter-pages-{{ chapter.id }}" class="chapter-pages" hidden>
+            {% for page in chapter.pages.all %}
+              <a class="page-link page-preview-link {% if page.id == current_page.id %}active{% endif %}" href="{% url 'notes:page_editor' notebook.id page.id %}" aria-label="{{ page.title }}" title="{{ page.title }}">
+                <canvas class="page-thumbnail" data-page-preview-id="{{ page.id }}" width="112" height="158"></canvas><span class="sr-only">{{ page.title }}</span>
+              </a>
+            {% endfor %}
+            {% if notebook.owner_id == user.id %}
+              <div class="chapter-actions">
+                <form action="{% url 'notes:page_add' chapter.id %}" method="post">{% csrf_token %}<button class="add-page" type="submit">+ 페이지</button></form>
+                <details class="inline-chapter-add"><summary>+ 챕터</summary><form action="{% url 'notes:chapter_add' notebook.id %}" method="post">{% csrf_token %}<input type="hidden" name="after_chapter_id" value="{{ chapter.id }}"><input name="title" maxlength="80" placeholder="새 챕터 이름"><button type="submit">추가</button></form></details>
+              </div>
+            {% endif %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <div class="editor-workspace">
+    <div class="editor-titlebar">
+      <input id="pageTitle" value="{{ current_page.title }}" maxlength="100" aria-label="페이지 제목" {% if notebook.owner_id != user.id %}readonly{% endif %}>
+      <span id="saveStatus" class="save-status">저장됨</span>
+      <a class="small-button" href="{% url 'notes:study' notebook.id %}">학습하기</a>
+    </div>
+    <div class="tool-row" role="toolbar" aria-label="필기 도구">
+      <div class="tool-family"><span class="tool-family-label">일반펜</span><div id="generalTools" class="tool-buttons"></div><button id="addToolButton" class="tool add-tool" type="button" aria-label="필기도구 추가">＋</button></div>
+      <div class="tool-divider" aria-hidden="true"></div>
+      <div class="tool-family"><span class="tool-family-label">학습펜</span><div id="studyTools" class="tool-buttons"></div></div>
+      <div class="tool-divider" aria-hidden="true"></div>
+      <button id="eraserButton" class="tool" type="button" data-special-tool="eraser">지우개 <small id="eraserModeLabel">획</small></button>
+      <button id="lassoButton" class="tool" type="button" data-special-tool="lasso">올가미</button>
+      <button id="textButton" class="tool" type="button" data-special-tool="text">텍스트</button>
+      <button id="memoButton" class="tool" type="button" data-special-tool="memo">메모지</button>
+      <button id="undoButton" class="tool icon-tool" type="button" title="실행 취소 (Ctrl+Z)">↶</button>
+      <button id="redoButton" class="tool icon-tool" type="button" title="다시 실행 (Ctrl+Y)">↷</button>
+      <div class="zoom-controls"><button id="zoomOutButton" class="tool icon-tool" type="button" aria-label="축소">−</button><span id="zoomLabel">100%</span><button id="zoomInButton" class="tool icon-tool" type="button" aria-label="확대">＋</button></div>
+      <button id="palmButton" class="tool" type="button">손바닥 · 자동</button>
+      <select id="paperTemplate" aria-label="필기지 선택">
+        {% for value, label in current_page.PAPER_TEMPLATES %}<option value="{{ value }}" {% if current_page.paper_template == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <button id="recognizeButton" class="tool accent" type="button">글씨 인식 확인</button>
+    </div>
+
+    <div id="paperViewport" class="paper-stage">
+      <div id="paperSizer" class="paper-sizer"><div id="paper" class="note-paper paper-{{ current_page.paper_template }}"><canvas id="inkCanvas" aria-label="손글씨 필기 영역"></canvas><div id="objectLayer" class="object-layer" aria-label="텍스트와 메모지 영역"></div></div></div>
+      <div id="selectionActions" class="selection-actions" hidden><span>선택 영역을 끌어 이동</span><button id="copySelection" type="button">복사</button><button id="deleteSelection" type="button">삭제</button><button id="clearSelection" type="button">해제</button></div>
+    </div>
+  </div>
+
+  <dialog id="toolSettingsDialog" class="settings-dialog">
+    <form method="dialog" class="dialog-heading"><div><p class="eyebrow">필기도구 설정</p><h2 id="settingsToolName">도구 설정</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
+    <label class="range-setting">굵기 <span><input id="toolWidth" type="range" min="1" max="40" step="1"><output id="toolWidthValue"></output></span></label>
+    <label id="opacitySetting" class="range-setting">불투명도 <span><input id="toolOpacity" type="range" min="5" max="100" step="1"><output id="toolOpacityValue"></output></span></label>
+    <section id="colorSettings">
+      <div class="palette-heading"><label>팔레트 <select id="paletteSelect"></select></label><button id="showPaletteCreator" class="small-button" type="button">+ 새 팔레트</button></div>
+      <div id="paletteColors" class="palette-colors" aria-label="현재 팔레트 색상"></div>
+      <div id="paletteCreator" class="palette-creator" hidden>
+        <label>팔레트 이름 <input id="newPaletteName" maxlength="40" placeholder="나의 팔레트"></label>
+        <div class="new-color-row"><input id="newPaletteColor" type="color" value="#343A40"><button id="addPaletteColor" class="small-button" type="button">색 추가</button></div>
+        <div id="newPaletteColors" class="palette-colors"></div>
+        <button id="savePaletteButton" class="secondary-button" type="button">이 팔레트 만들기</button>
+      </div>
+    </section>
+    <p id="fixedColorNotice" class="form-note" hidden>학습펜의 색은 역할을 구분하기 위해 고정되어 있어요.</p>
+    <div class="dialog-actions"><button id="saveToolSettings" class="primary-button" type="button">설정 저장</button></div>
+  </dialog>
+
+  <dialog id="eraserDialog" class="settings-dialog compact-dialog">
+    <form method="dialog" class="dialog-heading"><div><p class="eyebrow">지우개 설정</p><h2>지우는 방법</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
+    <div class="choice-list">
+      <label><input type="radio" name="eraser_mode" value="stroke"> <span><strong>획 지우기</strong><small>닿은 선 전체를 지워요.</small></span></label>
+      <label><input type="radio" name="eraser_mode" value="area"> <span><strong>영역 지우기</strong><small>문지른 부분만 지워요.</small></span></label>
+      <label><input type="radio" name="eraser_mode" value="lasso"> <span><strong>올가미 지우기</strong><small>둘러싼 선을 한꺼번에 지워요.</small></span></label>
+    </div>
+    <div class="dialog-actions"><button id="saveEraserSettings" class="primary-button" type="button">적용</button></div>
+  </dialog>
+
+  <dialog id="newToolDialog" class="settings-dialog compact-dialog">
+    <form method="dialog" class="dialog-heading"><div><p class="eyebrow">일반펜</p><h2>필기도구 추가</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
+    <div class="stack-form">
+      <label>도구 이름 <input id="newToolName" maxlength="30" placeholder="예: 빨간 채점펜"></label>
+      <label>도구 종류 <select id="newToolKind"><option value="pencil">연필</option><option value="pen">볼펜</option><option value="highlighter">형광펜</option></select></label>
+      <button id="createToolButton" class="primary-button" type="button">추가하고 설정하기</button>
+    </div>
+  </dialog>
+
+  <dialog id="recognitionDialog" class="recognition-dialog">
+    <form method="dialog" class="dialog-heading"><div><p class="eyebrow">손글씨 인식 검토</p><h2>검색·학습용 텍스트 확인</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
+    <p class="recognition-notice"><strong>현재 첫 버전:</strong> 자동 인식 서비스 연결 전이라 인식 결과 칸을 직접 적어 확인할 수 있어요. 필기 그림은 그대로 보존됩니다.</p>
+    <div class="recognition-grid"><section><h3>내 필기 원본</h3><div id="inkPreview" class="ink-preview"></div></section><section><h3>인식된 내용</h3><textarea id="recognizedText" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></section></div>
+    <label class="terms-field">빈칸으로 만들 핵심어 <textarea id="quizTerms" rows="3" placeholder="예: 세종대왕, 훈민정음">{% for term in current_page.quiz_terms %}{{ term }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea></label>
+    <div class="dialog-actions"><button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
+  </dialog>
+
+  {% csrf_token %}
+  {{ current_page.ink_data|json_script:"initial-ink" }}
+  {{ drawing_preferences|json_script:"drawing-preferences" }}
+  {{ page_previews|json_script:"page-previews" }}
+  {{ current_page.text_boxes|json_script:"initial-text-boxes" }}
+  {{ current_page.sticky_notes|json_script:"initial-sticky-notes" }}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'notes/editor.js' %}?v=20261027-4"></script>{% endblock %}

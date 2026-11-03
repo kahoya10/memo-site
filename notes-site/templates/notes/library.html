@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}내 공책 · 삽구의 서당{% endblock %}
+{% block content %}
+<section class="library-shell">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">필기</p>
+      <h1>내 공책</h1>
+      <p class="muted">작게 모아 보고, 제목이나 과목으로 바로 찾을 수 있어요.</p>
+    </div>
+    <button class="primary-button" type="button" data-open-dialog="createNotebook">+ 새 공책</button>
+  </div>
+
+  <form class="search-bar" method="get" role="search">
+    <label class="sr-only" for="notebook-search">공책 찾기</label>
+    <input id="notebook-search" name="q" value="{{ query }}" placeholder="공책·과목·필기 내용에서 찾기">
+    <button type="submit">찾기</button>
+    {% if query %}<a href="{% url 'notes:library' %}">초기화</a>{% endif %}
+  </form>
+
+  {% if notebooks %}
+    <div class="notebook-grid">
+      {% for notebook in notebooks %}
+        <article class="notebook-card">
+          <a class="a4-cover cover-{{ notebook.cover_style }}" href="{% url 'notes:editor' notebook.id %}"
+             {% if notebook.cover_upload %}style="background-image:url('{{ notebook.cover_upload.url }}')"{% endif %}>
+            <span class="cover-subject">{{ notebook.subject }}</span>
+            <strong>{{ notebook.title }}</strong>
+            <small>{{ notebook.updated_at|date:"Y.m.d" }} 수정</small>
+          </a>
+          <div class="notebook-actions">
+            <a class="small-button primary" href="{% url 'notes:editor' notebook.id %}">필기하기</a>
+            <a class="small-button" href="{% url 'notes:study' notebook.id %}">학습하기</a>
+            <button class="small-button disabled" type="button" title="다음 단계에서 만들 기능" disabled>정리하기 · 나중</button>
+          </div>
+          <form action="{% url 'notes:notebook_delete' notebook.id %}" method="post" onsubmit="return confirm('이 공책과 모든 페이지를 삭제할까요?');">
+            {% csrf_token %}
+            <button class="danger-link" type="submit">공책 삭제</button>
+          </form>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <section class="empty-state">
+      <div class="empty-dog" aria-hidden="true">ㅅ</div>
+      {% if query %}
+        <h2>찾는 공책이 없어요</h2><p>다른 제목이나 과목으로 찾아보세요.</p>
+      {% else %}
+        <h2>첫 공책을 펼쳐 볼까요?</h2><p>필기하고, 중요한 부분을 빈칸 문제로 바꿔 공부할 수 있어요.</p>
+        <button class="primary-button" type="button" data-open-dialog="createNotebook">공책 만들기</button>
+      {% endif %}
+    </section>
+  {% endif %}
+</section>
+
+<dialog id="createNotebook" class="form-dialog" {% if open_create %}open{% endif %}>
+  <form action="{% url 'notes:notebook_create' %}" method="post" enctype="multipart/form-data" class="stack-form">
+    {% csrf_token %}
+    <div class="dialog-heading"><div><p class="eyebrow">새 필기</p><h2>공책 만들기</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="닫기">×</button></div>
+    {% for field in create_form %}
+      <label>{{ field.label }} {{ field }}
+        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </label>
+    {% endfor %}
+    <p class="form-note">직접 만든 표지는 PNG 파일(최대 5MB)로 넣을 수 있어요.</p>
+    <button class="primary-button wide" type="submit">만들고 필기 시작</button>
+  </form>
+</dialog>
+<script>
+  document.querySelectorAll('[data-open-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.openDialog).showModal()));
+  document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+</script>
+{% endblock %}

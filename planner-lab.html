@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>PLANNER LAB · 펜 입력 실험장</title>
+    <link rel="stylesheet" href="planner-lab.css?v=lab-5" />
+  </head>
+  <body>
+    <main class="lab-shell">
+      <header class="lab-header">
+        <div>
+          <p class="eyebrow">PLANNER LAB</p>
+          <h1>펜 입력 실험장</h1>
+          <p class="intro">기존 플래너와 분리된 테스트 화면입니다. 여기서 확인한 기능만 본 화면에 옮깁니다.</p>
+        </div>
+        <div class="lab-status" id="deviceStatus" aria-live="polite">펜 입력을 기다리는 중</div>
+      </header>
+
+      <section class="lab-grid" aria-label="펜 입력 테스트">
+        <article class="ink-card" data-ink-field="memo">
+          <header class="card-heading">
+            <div><p class="card-kicker">MEMO</p><h2>메모</h2></div>
+            <div class="mode-switch" role="group" aria-label="메모 입력 방식">
+              <button class="mode-button is-active" type="button" data-mode="text">텍스트</button>
+              <button class="mode-button" type="button" data-mode="ink">펜</button>
+            </div>
+          </header>
+          <div class="editor-wrap">
+            <textarea class="text-editor" id="memoText" placeholder="텍스트로 메모를 적어 보세요."></textarea>
+            <canvas class="ink-canvas" id="memoCanvas" aria-label="메모 펜 입력 영역" hidden></canvas>
+          </div>
+          <div class="ink-toolbar" hidden>
+            <label>굵기 <input class="pen-size" type="range" min="1" max="12" value="3" /></label>
+            <div class="palette-picker" aria-label="펜 색상 팔레트 선택">
+              <div class="palette-tabs">
+                <button class="palette-tab is-active" type="button" data-palette="basic">기본</button>
+                <button class="palette-tab" type="button" data-palette="pastel">파스텔</button>
+                <button class="palette-tab" type="button" data-palette="marker">마커</button>
+              </div>
+              <div class="palette-colors" data-palette-colors="basic">
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#4f6680" style="--swatch:#4f6680" aria-label="파란 회색"></button>
+                <button class="color-swatch" type="button" data-color="#383b40" style="--swatch:#383b40" aria-label="검정"></button>
+                <button class="color-swatch" type="button" data-color="#a86661" style="--swatch:#a86661" aria-label="붉은색"></button>
+                <button class="color-swatch" type="button" data-color="#6d896f" style="--swatch:#6d896f" aria-label="초록색"></button>
+                <button class="color-swatch" type="button" data-color="#c28f43" style="--swatch:#c28f43" aria-label="갈색"></button>
+              </div>
+              <div class="palette-colors" data-palette-colors="pastel" hidden>
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#8aa8c2" style="--swatch:#8aa8c2" aria-label="파스텔 파랑"></button>
+                <button class="color-swatch" type="button" data-color="#c39ab0" style="--swatch:#c39ab0" aria-label="파스텔 분홍"></button>
+                <button class="color-swatch" type="button" data-color="#d5a16d" style="--swatch:#d5a16d" aria-label="파스텔 주황"></button>
+                <button class="color-swatch" type="button" data-color="#9bb69a" style="--swatch:#9bb69a" aria-label="파스텔 초록"></button>
+                <button class="color-swatch" type="button" data-color="#cfc5a5" style="--swatch:#cfc5a5" aria-label="파스텔 베이지"></button>
+              </div>
+              <div class="palette-colors" data-palette-colors="marker" hidden>
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#f1b24a" style="--swatch:#f1b24a" aria-label="형광 노랑"></button>
+                <button class="color-swatch" type="button" data-color="#f07e75" style="--swatch:#f07e75" aria-label="형광 빨강"></button>
+                <button class="color-swatch" type="button" data-color="#79b6d2" style="--swatch:#79b6d2" aria-label="형광 파랑"></button>
+                <button class="color-swatch" type="button" data-color="#88c27a" style="--swatch:#88c27a" aria-label="형광 초록"></button>
+                <button class="color-swatch" type="button" data-color="#b18fd1" style="--swatch:#b18fd1" aria-label="형광 보라"></button>
+              </div>
+            </div>
+            <button class="tool-button undo-button" type="button">되돌리기</button>
+            <button class="tool-button clear-button" type="button">지우기</button>
+          </div>
+          <p class="card-status" aria-live="polite">텍스트 입력 모드</p>
+        </article>
+
+        <article class="ink-card" data-ink-field="feedback">
+          <header class="card-heading">
+            <div><p class="card-kicker">FEEDBACK</p><h2>피드백</h2></div>
+            <div class="mode-switch" role="group" aria-label="피드백 입력 방식">
+              <button class="mode-button is-active" type="button" data-mode="text">텍스트</button>
+              <button class="mode-button" type="button" data-mode="ink">펜</button>
+            </div>
+          </header>
+          <div class="editor-wrap">
+            <textarea class="text-editor" id="feedbackText" placeholder="텍스트로 피드백을 적어 보세요."></textarea>
+            <canvas class="ink-canvas" id="feedbackCanvas" aria-label="피드백 펜 입력 영역" hidden></canvas>
+          </div>
+          <div class="ink-toolbar" hidden>
+            <label>굵기 <input class="pen-size" type="range" min="1" max="12" value="3" /></label>
+            <div class="palette-picker" aria-label="펜 색상 팔레트 선택">
+              <div class="palette-tabs">
+                <button class="palette-tab is-active" type="button" data-palette="basic">기본</button>
+                <button class="palette-tab" type="button" data-palette="pastel">파스텔</button>
+                <button class="palette-tab" type="button" data-palette="marker">마커</button>
+              </div>
+              <div class="palette-colors" data-palette-colors="basic">
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#4f6680" style="--swatch:#4f6680" aria-label="파란 회색"></button>
+                <button class="color-swatch" type="button" data-color="#383b40" style="--swatch:#383b40" aria-label="검정"></button>
+                <button class="color-swatch" type="button" data-color="#a86661" style="--swatch:#a86661" aria-label="붉은색"></button>
+                <button class="color-swatch" type="button" data-color="#6d896f" style="--swatch:#6d896f" aria-label="초록색"></button>
+                <button class="color-swatch" type="button" data-color="#c28f43" style="--swatch:#c28f43" aria-label="갈색"></button>
+              </div>
+              <div class="palette-colors" data-palette-colors="pastel" hidden>
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#8aa8c2" style="--swatch:#8aa8c2" aria-label="파스텔 파랑"></button>
+                <button class="color-swatch" type="button" data-color="#c39ab0" style="--swatch:#c39ab0" aria-label="파스텔 분홍"></button>
+                <button class="color-swatch" type="button" data-color="#d5a16d" style="--swatch:#d5a16d" aria-label="파스텔 주황"></button>
+                <button class="color-swatch" type="button" data-color="#9bb69a" style="--swatch:#9bb69a" aria-label="파스텔 초록"></button>
+                <button class="color-swatch" type="button" data-color="#cfc5a5" style="--swatch:#cfc5a5" aria-label="파스텔 베이지"></button>
+              </div>
+              <div class="palette-colors" data-palette-colors="marker" hidden>
+                <span>색상</span>
+                <button class="color-swatch is-active" type="button" data-color="#f1b24a" style="--swatch:#f1b24a" aria-label="형광 노랑"></button>
+                <button class="color-swatch" type="button" data-color="#f07e75" style="--swatch:#f07e75" aria-label="형광 빨강"></button>
+                <button class="color-swatch" type="button" data-color="#79b6d2" style="--swatch:#79b6d2" aria-label="형광 파랑"></button>
+                <button class="color-swatch" type="button" data-color="#88c27a" style="--swatch:#88c27a" aria-label="형광 초록"></button>
+                <button class="color-swatch" type="button" data-color="#b18fd1" style="--swatch:#b18fd1" aria-label="형광 보라"></button>
+              </div>
+            </div>
+            <button class="tool-button undo-button" type="button">되돌리기</button>
+            <button class="tool-button clear-button" type="button">지우기</button>
+          </div>
+          <p class="card-status" aria-live="polite">텍스트 입력 모드</p>
+        </article>
+      </section>
+
+      <footer class="lab-footer">
+        <a href="planner.html">← 기존 플래너로 돌아가기</a>
+        <span>이 페이지의 데이터는 기존 플래너와 별도로 저장됩니다.</span>
+      </footer>
+    </main>
+    <script src="planner-lab.js?v=lab-5"></script>
+  </body>
+</html>

@@ -1,0 +1,47 @@
+/* Pastel Rainbow - https://coolors.co/70d6ff-ff70a6-ff9770-ffd670-e9ff70 */
+
+/* CSS HEX */
+--frozen-lake: #70d6ffff;
+--rose-kiss: #ff70a6ff;
+--tangerine-dream: #ff9770ff;
+--royal-gold: #ffd670ff;
+--lime-cream: #e9ff70ff;
+
+/* CSS HSL */
+--frozen-lake: hsla(197, 100%, 72%, 1);
+--rose-kiss: hsla(337, 100%, 72%, 1);
+--tangerine-dream: hsla(16, 100%, 72%, 1);
+--royal-gold: hsla(43, 100%, 72%, 1);
+--lime-cream: hsla(69, 100%, 72%, 1);
+
+/* SCSS HEX */
+$frozen-lake: #70d6ffff;
+$rose-kiss: #ff70a6ff;
+$tangerine-dream: #ff9770ff;
+$royal-gold: #ffd670ff;
+$lime-cream: #e9ff70ff;
+
+/* SCSS HSL */
+$frozen-lake: hsla(197, 100%, 72%, 1);
+$rose-kiss: hsla(337, 100%, 72%, 1);
+$tangerine-dream: hsla(16, 100%, 72%, 1);
+$royal-gold: hsla(43, 100%, 72%, 1);
+$lime-cream: hsla(69, 100%, 72%, 1);
+
+/* SCSS RGB */
+$frozen-lake: rgba(112, 214, 255, 1);
+$rose-kiss: rgba(255, 112, 166, 1);
+$tangerine-dream: rgba(255, 151, 112, 1);
+$royal-gold: rgba(255, 214, 112, 1);
+$lime-cream: rgba(233, 255, 112, 1);
+
+/* SCSS Gradient */
+$gradient-top: linear-gradient(0deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-right: linear-gradient(90deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-bottom: linear-gradient(180deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-left: linear-gradient(270deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-top-right: linear-gradient(45deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-bottom-right: linear-gradient(135deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-top-left: linear-gradient(225deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-bottom-left: linear-gradient(315deg, #70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);
+$gradient-radial: radial-gradient(#70d6ffff, #ff70a6ff, #ff9770ff, #ffd670ff, #e9ff70ff);

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}로그인 · 삽구의 서당{% endblock %}
+{% block body_class %}auth-page{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <p class="eyebrow">다시 온 것을 환영해요</p>
+  <h1>서당에 들어가기</h1>
+  <p class="muted">내 공책은 작성한 나와 관리자만 볼 수 있어요.</p>
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <label>아이디 {{ form.username }}</label>
+    <label>비밀번호 {{ form.password }}</label>
+    <input type="hidden" name="next" value="{{ next }}">
+    <button class="primary-button wide" type="submit">로그인</button>
+  </form>
+  <p class="auth-switch">초대 코드를 받았나요? <a href="{% url 'signup' %}">회원가입</a></p>
+</section>
+{% endblock %}
