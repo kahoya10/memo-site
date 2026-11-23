@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Chapter, DrawingPreferences, InviteCode, Notebook, Page
+from .models import Chapter, DrawingPreferences, InviteCode, Notebook, Page, StudySession
 
 
 @admin.register(InviteCode)
@@ -39,3 +39,17 @@ class PageAdmin(admin.ModelAdmin):
 @admin.register(DrawingPreferences)
 class DrawingPreferencesAdmin(admin.ModelAdmin):
     list_display = ("user", "active_palette", "eraser_mode", "palm_rejection", "updated_at")
+
+
+@admin.register(StudySession)
+class StudySessionAdmin(admin.ModelAdmin):
+    list_display = ("owner", "subject", "mode", "started_at", "ended_at", "duration_seconds")
+    list_filter = ("subject", "mode")
+    search_fields = ("owner__username",)
+    readonly_fields = ("owner", "client_id", "subject", "mode", "started_at", "ended_at", "duration_seconds", "created_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

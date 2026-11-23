@@ -1,8 +1,11 @@
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
@@ -80,9 +83,13 @@ MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-LOGIN_REDIRECT_URL = "notes:library"
-LOGOUT_REDIRECT_URL = "login"
-LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "notes:dashboard"
+LOGOUT_REDIRECT_URL = "notes:dashboard"
+LOGIN_URL = "notes:dashboard"
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+LOCAL_OCR_MODEL_DIR = BASE_DIR / "ocr-models"
+LOCAL_OCR_DOWNLOAD_ENABLED = os.environ.get("LOCAL_OCR_DOWNLOAD_ENABLED", "1") == "1"
+HANDWRITING_IMAGE_MAX_BYTES = 6 * 1024 * 1024

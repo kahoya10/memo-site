@@ -6,7 +6,11 @@ from . import views
 app_name = "notes"
 
 urlpatterns = [
-    path("", views.library, name="library"),
+    path("", views.dashboard, name="dashboard"),
+    path("notes/", views.library, name="library"),
+    path("timer/", views.timer, name="timer"),
+    path("planner/", views.planner, name="planner"),
+    path("api/study-sessions/", views.study_sessions_api, name="study_sessions_api"),
     path("notebooks/create/", views.notebook_create, name="notebook_create"),
     path("notebooks/<int:notebook_id>/delete/", views.notebook_delete, name="notebook_delete"),
     path("notebooks/<int:notebook_id>/rename/", views.notebook_rename, name="notebook_rename"),
@@ -16,6 +20,7 @@ urlpatterns = [
     path("chapters/<int:chapter_id>/rename/", views.chapter_rename, name="chapter_rename"),
     path("chapters/<int:chapter_id>/pages/add/", views.page_add, name="page_add"),
     path("pages/<int:page_id>/save/", views.page_save, name="page_save"),
+    path("pages/<int:page_id>/recognize/", views.page_recognize, name="page_recognize"),
     path("drawing-preferences/save/", views.drawing_preferences_save, name="drawing_preferences_save"),
     path("notebooks/<int:notebook_id>/study/", views.study, name="study"),
 ]

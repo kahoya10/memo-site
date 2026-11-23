@@ -5,6 +5,7 @@
 {% block content %}
 <section id="editorApp" class="editor-shell"
   data-save-url="{% url 'notes:page_save' current_page.id %}"
+  data-recognize-url="{% url 'notes:page_recognize' current_page.id %}"
   data-preferences-url="{% url 'notes:drawing_preferences_save' %}"
   data-previous-page-url="{% if previous_page %}{% url 'notes:page_editor' notebook.id previous_page.id %}{% endif %}"
   data-next-page-url="{% if next_page %}{% url 'notes:page_editor' notebook.id next_page.id %}{% endif %}"
@@ -73,7 +74,7 @@
       <select id="paperTemplate" aria-label="필기지 선택">
         {% for value, label in current_page.PAPER_TEMPLATES %}<option value="{{ value }}" {% if current_page.paper_template == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
       </select>
-      <button id="recognizeButton" class="tool accent" type="button">글씨 인식 확인</button>
+      <button id="recognizeButton" class="tool accent" type="button">손글씨 자동 인식</button>
     </div>
 
     <div id="paperViewport" class="paper-stage">
@@ -121,7 +122,7 @@
 
   <dialog id="recognitionDialog" class="recognition-dialog">
     <form method="dialog" class="dialog-heading"><div><p class="eyebrow">손글씨 인식 검토</p><h2>검색·학습용 텍스트 확인</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
-    <p class="recognition-notice"><strong>현재 첫 버전:</strong> 자동 인식 서비스 연결 전이라 인식 결과 칸을 직접 적어 확인할 수 있어요. 필기 그림은 그대로 보존됩니다.</p>
+    <p id="recognitionNotice" class="recognition-notice"><strong>서버 내부 손글씨 인식:</strong> 필기 이미지는 외부 AI 서비스로 전송되지 않습니다. 결과를 확인하고 필요한 부분을 고친 뒤 저장해 주세요.</p>
     <div class="recognition-grid"><section><h3>내 필기 원본</h3><div id="inkPreview" class="ink-preview"></div></section><section><h3>인식된 내용</h3><textarea id="recognizedText" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></section></div>
     <label class="terms-field">빈칸으로 만들 핵심어 <textarea id="quizTerms" rows="3" placeholder="예: 세종대왕, 훈민정음">{% for term in current_page.quiz_terms %}{{ term }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea></label>
     <div class="dialog-actions"><button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
@@ -135,4 +136,4 @@
   {{ current_page.sticky_notes|json_script:"initial-sticky-notes" }}
 </section>
 {% endblock %}
-{% block scripts %}<script src="{% static 'notes/editor.js' %}?v=20261027-4"></script>{% endblock %}
+{% block scripts %}<script src="{% static 'notes/editor.js' %}?v=20261123-2"></script>{% endblock %}

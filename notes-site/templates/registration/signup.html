@@ -1,20 +1,36 @@
-{% extends "base.html" %}
-{% block title %}회원가입 · 삽구의 서당{% endblock %}
-{% block body_class %}auth-page{% endblock %}
-{% block content %}
-<section class="auth-card">
-  <p class="eyebrow">친구만 들어오는 작은 서당</p>
-  <h1>초대받고 시작하기</h1>
-  <form method="post" class="stack-form">
-    {% csrf_token %}
-    {% for field in form %}
-      <label>{{ field.label }} {{ field }}
-        {% if field.help_text %}<small>{{ field.help_text|safe }}</small>{% endif %}
-        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-      </label>
-    {% endfor %}
-    <button class="primary-button wide" type="submit">회원가입</button>
-  </form>
-  <p class="auth-switch">이미 계정이 있나요? <a href="{% url 'login' %}">로그인</a></p>
-</section>
-{% endblock %}
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f1ea" />
+  <title>회원가입 · 삽구의 서당</title>
+  <link rel="stylesheet" href="{% static 'shell/main.css' %}?v=20261120-1" />
+</head>
+<body class="auth-main-page">
+  <main class="shell auth-shell">
+    <header class="topbar"><a class="brand auth-brand-link" href="{% url 'notes:dashboard' %}"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg></span><span><strong>삽구의 서당</strong></span></a></header>
+    <section class="auth-main-grid">
+      <div class="auth-dog" role="img" aria-label="기다리는 강아지"><img src="{% static 'shell/hd2.png' %}" alt="" /></div>
+      <section class="surface auth-main-card">
+        <p class="eyebrow">친구만 들어오는 작은 서당</p>
+        <h1>초대받고 시작하기</h1>
+        <p class="auth-description">계정을 만들면 공부 시간과 필기 기록이 내 계정에 안전하게 모여요.</p>
+        <form method="post" class="auth-form">
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="auth-errors">{{ form.non_field_errors }}</div>{% endif %}
+          {% for field in form %}
+            <label>{{ field.label }} {{ field }}
+              {% if field.help_text %}<small>{{ field.help_text|safe }}</small>{% endif %}
+              {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </label>
+          {% endfor %}
+          <button class="primary-btn auth-submit" type="submit">회원가입</button>
+        </form>
+        <p class="auth-switch">이미 계정이 있나요? <a href="{% url 'notes:dashboard' %}">로그인</a></p>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

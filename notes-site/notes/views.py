@@ -1,28 +1,152 @@
+import base64
+import binascii
+import io
 import json
+import logging
+import re
+import threading
+from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
 from django.db import transaction
 from django.db.models import F, Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import InviteSignupForm, NotebookForm
-from .models import Chapter, DrawingPreferences, Notebook, Page
+from .models import Chapter, DrawingPreferences, Notebook, Page, StudySession
+
+
+logger = logging.getLogger(__name__)
+HANDWRITING_DATA_URL = re.compile(
+    r"^data:image/(?P<format>png|jpeg|jpg|webp);base64,(?P<data>[A-Za-z0-9+/=]+)$"
+)
+_local_ocr_reader = None
+_local_ocr_reader_lock = threading.Lock()
+_local_ocr_inference_lock = threading.Lock()
+
+
+def dashboard(request):
+    if not request.user.is_authenticated:
+        form = AuthenticationForm(request, data=request.POST or None)
+        if request.method == "POST" and form.is_valid():
+            login(request, form.get_user())
+            next_url = request.POST.get("next", "")
+            if next_url and url_has_allowed_host_and_scheme(
+                next_url,
+                allowed_hosts={request.get_host()},
+                require_https=request.is_secure(),
+            ):
+                return redirect(next_url)
+            return redirect("notes:dashboard")
+        return render(
+            request,
+            "registration/main_login.html",
+            {"form": form, "next": request.GET.get("next", "")},
+        )
+    return render(
+        request,
+        "notes/dashboard.html",
+        {"notebook_count": Notebook.objects.filter(owner=request.user).count()},
+    )
+
+
+@login_required
+def timer(request):
+    return render(request, "notes/timer.html")
+
+
+@login_required
+def planner(request):
+    return render(request, "notes/planner.html")
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def study_sessions_api(request):
+    if request.method == "GET":
+        sessions = StudySession.objects.filter(owner=request.user).order_by("started_at", "id")
+        return JsonResponse(
+            {
+                "sessions": [
+                    {
+                        "id": session.id,
+                        "subject": session.subject,
+                        "mode": session.mode,
+                        "started_at": session.started_at.isoformat(),
+                        "ended_at": session.ended_at.isoformat(),
+                        "duration_seconds": session.duration_seconds,
+                    }
+                    for session in sessions
+                ]
+            }
+        )
+
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "올바르지 않은 기록입니다."}, status=400)
+
+    client_id = str(payload.get("client_id", ""))[:80]
+    subject = str(payload.get("subject", ""))
+    mode = str(payload.get("mode", ""))
+    started_at = parse_datetime(str(payload.get("started_at", "")))
+    ended_at = parse_datetime(str(payload.get("ended_at", "")))
+    try:
+        duration_seconds = max(0, int(payload.get("duration_seconds", 0)))
+    except (TypeError, ValueError):
+        duration_seconds = 0
+
+    if not client_id or subject not in dict(StudySession.SUBJECTS) or mode not in dict(StudySession.MODES):
+        return JsonResponse({"ok": False, "error": "과목 또는 타이머 정보가 올바르지 않습니다."}, status=400)
+    if not started_at or not ended_at:
+        return JsonResponse({"ok": False, "error": "시작·종료 시각이 필요합니다."}, status=400)
+    if timezone.is_naive(started_at):
+        started_at = timezone.make_aware(started_at)
+    if timezone.is_naive(ended_at):
+        ended_at = timezone.make_aware(ended_at)
+    wall_seconds = int((ended_at - started_at).total_seconds())
+    if wall_seconds <= 0 or duration_seconds <= 0 or duration_seconds > wall_seconds + 2:
+        return JsonResponse({"ok": False, "error": "집중 시간 범위가 올바르지 않습니다."}, status=400)
+    if duration_seconds > 24 * 60 * 60 or ended_at > timezone.now() + timedelta(minutes=1):
+        return JsonResponse({"ok": False, "error": "저장할 수 없는 시간 범위입니다."}, status=400)
+
+    rounded_minutes = int(duration_seconds / 60 + 0.5)
+    if rounded_minutes < 1:
+        return JsonResponse({"ok": True, "recorded": False, "reason": "rounded_to_zero"})
+
+    session, created = StudySession.objects.get_or_create(
+        owner=request.user,
+        client_id=client_id,
+        defaults={
+            "subject": subject,
+            "mode": mode,
+            "started_at": started_at,
+            "ended_at": ended_at,
+            "duration_seconds": duration_seconds,
+        },
+    )
+    return JsonResponse({"ok": True, "recorded": True, "created": created, "id": session.id})
 
 
 def signup(request):
     if request.user.is_authenticated:
-        return redirect("notes:library")
+        return redirect("notes:dashboard")
     form = InviteSignupForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user)
         messages.success(request, "삽구의 서당에 온 것을 환영해요.")
-        return redirect("notes:library")
+        return redirect("notes:dashboard")
     return render(request, "registration/signup.html", {"form": form})
 
 
@@ -342,6 +466,95 @@ def page_save(request, page_id):
     page.save()
     page.chapter.notebook.save(update_fields=["updated_at"])
     return JsonResponse({"ok": True, "saved_at": page.updated_at.isoformat()})
+
+
+def get_local_ocr_reader():
+    global _local_ocr_reader
+    if _local_ocr_reader is None:
+        with _local_ocr_reader_lock:
+            if _local_ocr_reader is None:
+                from easyocr import Reader
+
+                model_dir = settings.LOCAL_OCR_MODEL_DIR
+                model_dir.mkdir(parents=True, exist_ok=True)
+                _local_ocr_reader = Reader(
+                    ["ko", "en"],
+                    gpu=False,
+                    model_storage_directory=str(model_dir),
+                    download_enabled=settings.LOCAL_OCR_DOWNLOAD_ENABLED,
+                    verbose=False,
+                )
+    return _local_ocr_reader
+
+
+def recognize_handwriting_image(image_bytes):
+    import numpy as np
+    from PIL import Image, ImageOps
+
+    with Image.open(io.BytesIO(image_bytes)) as source_image:
+        image = ImageOps.exif_transpose(source_image).convert("RGB")
+        image.thumbnail((2200, 2200))
+        image_array = np.asarray(image)
+
+    reader = get_local_ocr_reader()
+    with _local_ocr_inference_lock:
+        detected_text = reader.readtext(
+            image_array,
+            detail=0,
+            paragraph=True,
+            workers=0,
+            batch_size=1,
+            min_size=8,
+            canvas_size=2560,
+            mag_ratio=1.5,
+        )
+    return "\n".join(str(text).strip() for text in detected_text if str(text).strip())
+
+
+@login_required
+@require_POST
+def page_recognize(request, page_id):
+    page = get_object_or_404(Page, pk=page_id, chapter__notebook__owner=request.user)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "올바르지 않은 인식 요청입니다."}, status=400)
+
+    image_data = payload.get("image_data", "")
+    if not isinstance(image_data, str):
+        return JsonResponse({"ok": False, "error": "필기 이미지가 올바르지 않습니다."}, status=400)
+    match = HANDWRITING_DATA_URL.fullmatch(image_data)
+    if not match:
+        return JsonResponse({"ok": False, "error": "지원하지 않는 필기 이미지 형식입니다."}, status=400)
+    try:
+        image_bytes = base64.b64decode(match.group("data"), validate=True)
+    except (binascii.Error, ValueError):
+        return JsonResponse({"ok": False, "error": "필기 이미지를 읽을 수 없습니다."}, status=400)
+    if not image_bytes or len(image_bytes) > settings.HANDWRITING_IMAGE_MAX_BYTES:
+        return JsonResponse({"ok": False, "error": "필기 이미지가 너무 큽니다."}, status=400)
+
+    try:
+        recognized_text = recognize_handwriting_image(image_bytes)
+    except Exception:
+        logger.exception("Handwriting recognition failed for page %s", page.id)
+        return JsonResponse(
+            {"ok": False, "error": "손글씨 인식에 실패했어요. 잠시 후 다시 시도해 주세요."},
+            status=502,
+        )
+    if not recognized_text:
+        return JsonResponse(
+            {"ok": False, "error": "인식할 수 있는 손글씨를 찾지 못했어요."},
+            status=422,
+        )
+
+    page.recognized_text = recognized_text[:50000]
+    page.recognition_status = "needs_review"
+    page.uncertain_ranges = []
+    page.save(
+        update_fields=["recognized_text", "recognition_status", "uncertain_ranges", "updated_at"]
+    )
+    page.chapter.notebook.save(update_fields=["updated_at"])
+    return JsonResponse({"ok": True, "recognized_text": page.recognized_text})
 
 
 @login_required

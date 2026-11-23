@@ -86,6 +86,94 @@ const state = {
   lastAccumulatedElapsed: 0,
 };
 
+const STUDY_API_URL = document.body.dataset.studyApi || "";
+const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
+const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
+const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+const STUDY_ASSET_BASE = document.body.dataset.assetBase || "";
+let studySegment = null;
+
+function studyRecordId() {
+  return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function loadStudyQueue() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(STUDY_QUEUE_KEY) || "[]");
+    return Array.isArray(saved) ? saved : [];
+  } catch (error) { return []; }
+}
+
+function saveStudyQueue(queue) {
+  try { window.localStorage.setItem(STUDY_QUEUE_KEY, JSON.stringify(queue)); } catch (error) { /* retry is unavailable */ }
+}
+
+async function flushStudyQueue() {
+  if (!STUDY_API_URL || flushStudyQueue.running) return;
+  flushStudyQueue.running = true;
+  const queue = loadStudyQueue();
+  while (queue.length) {
+    try {
+      const response = await window.fetch(STUDY_API_URL, {
+        method: "POST",
+        credentials: "same-origin",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
+        body: JSON.stringify(queue[0]),
+      });
+      if (!response.ok) break;
+      queue.shift();
+      saveStudyQueue(queue);
+    } catch (error) { break; }
+  }
+  flushStudyQueue.running = false;
+}
+
+function currentStudySubject() {
+  if (state.mode === "normal") return state.subject;
+  if (state.mode === "pomodoro") return state.phase === "work" ? state.subject : "";
+  if (state.mode !== "mock") return "";
+  if (state.examSubject === "full-day") {
+    const item = currentMockScheduleItem();
+    if (!item || item.type === "break") return "";
+    return ({ "국어": "korean", "수학": "math", "영어": "english", "한국사": "social", "사회탐구": "social", "과학탐구": "science" })[item.name] || "etc";
+  }
+  return state.examSubject === "history" ? "social" : state.examSubject;
+}
+
+function beginStudySegment() {
+  const subject = currentStudySubject();
+  if (!STUDY_API_URL || !subject) { studySegment = null; return; }
+  studySegment = {
+    clientId: studyRecordId(),
+    subject,
+    mode: state.mode,
+    startedAt: Date.now(),
+    maximumSeconds: state.stopwatch ? null : state.segmentSeconds,
+  };
+}
+
+function completeStudySegment() {
+  if (!studySegment) return;
+  const segment = studySegment;
+  studySegment = null;
+  const wallSeconds = Math.max(0, Math.floor((Date.now() - segment.startedAt) / 1000));
+  const durationSeconds = segment.maximumSeconds === null ? wallSeconds : Math.min(wallSeconds, segment.maximumSeconds);
+  if (!durationSeconds) return;
+  const endedAt = segment.startedAt + durationSeconds * 1000;
+  const queue = loadStudyQueue();
+  queue.push({
+    client_id: segment.clientId,
+    subject: segment.subject,
+    mode: segment.mode,
+    started_at: new Date(segment.startedAt).toISOString(),
+    ended_at: new Date(endedAt).toISOString(),
+    duration_seconds: durationSeconds,
+  });
+  saveStudyQueue(queue);
+  flushStudyQueue();
+}
+
 const miniTimers = [];
 let nextMiniTimerId = 1;
 
@@ -370,7 +458,18 @@ function stopAlarm() {
   state.alarmUntil = null;
 }
 
+let temporaryStatusTimer = 0;
 function setStatus(text) { els.statusText.textContent = text; }
+function showTemporaryStatus(text) {
+  window.clearTimeout(temporaryStatusTimer);
+  setStatus(text);
+  els.statusText.classList.remove("is-temporary-alert");
+  void els.statusText.offsetWidth;
+  els.statusText.classList.add("is-temporary-alert");
+  temporaryStatusTimer = window.setTimeout(() => {
+    els.statusText.classList.remove("is-temporary-alert");
+  }, 1000);
+}
 
 function updateModeDetails() {
   els.modeName.textContent = MODE_NAMES[state.mode];
@@ -421,6 +520,7 @@ function setTimer(seconds, { saveAsInitial = true } = {}) {
 }
 
 function finishTimer() {
+  completeStudySegment();
   stopInterval();
   state.running = false;
   state.startedAt = null;
@@ -458,6 +558,7 @@ function finishTimer() {
       state.lastAccumulatedElapsed = 0;
       stopInterval();
       state.timerId = window.setInterval(tick, 200);
+      beginStudySegment();
       tick();
     } else {
       setStatus("고1·고2 하루 시간표가 끝났어요");
@@ -483,7 +584,7 @@ function tick() {
 
 function startTimer() {
   if ((state.mode === "normal" || state.mode === "pomodoro") && !state.subject) {
-    setStatus("과목을 먼저 선택해 주세요");
+    showTemporaryStatus("과목을 먼저 선택해 주세요");
     els.timerSubject.focus();
     return;
   }
@@ -506,6 +607,7 @@ function startTimer() {
   state.lastAccumulatedElapsed = 0;
   state.startedAt = Date.now();
   state.running = true;
+  beginStudySegment();
   stopInterval();
   state.timerId = window.setInterval(tick, 200);
   setStatus(state.mode === "pomodoro"
@@ -517,6 +619,7 @@ function startTimer() {
 
 function pauseTimer() {
   tick();
+  completeStudySegment();
   stopInterval();
   state.startedAt = null;
   if (state.stopwatch) state.stopwatchElapsed = state.currentSeconds;
@@ -527,6 +630,7 @@ function pauseTimer() {
 }
 
 function resetTimer() {
+  completeStudySegment();
   stopInterval();
   stopAlarm();
   state.startedAt = null;
@@ -605,6 +709,7 @@ function applySettings() {
   state.totalRounds = clamp(Number(els.roundCount.value) || 1, 1, 12);
   els.roundCount.value = state.totalRounds;
   state.examSubject = els.examSubject.value;
+  completeStudySegment();
   stopInterval();
   stopAlarm();
   state.running = false;
@@ -689,7 +794,7 @@ window.setInterval(() => {
   mascotFrame = mascotFrame === 0 ? 1 : 0;
   els.mascotWrap.classList.toggle("td1-frame", mascotFrame === 0);
   els.mascotWrap.classList.toggle("td2-frame", mascotFrame === 1);
-  els.mascot.src = mascotFrame === 0 ? "td1.png" : "td2.png";
+  els.mascot.src = `${STUDY_ASSET_BASE}${mascotFrame === 0 ? "td1.png" : "td2.png"}`;
 }, 400);
 
 els.examSubject.addEventListener("change", () => {
@@ -700,8 +805,10 @@ els.examSubject.addEventListener("change", () => {
 });
 
 document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+window.addEventListener("pagehide", completeStudySegment);
 
 setTimer(0);
+flushStudyQueue();
 renderQuickPresets();
 updateModeDetails();
 updateControls();

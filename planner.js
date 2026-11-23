@@ -119,6 +119,90 @@ if (!state.weekGoals || typeof state.weekGoals !== "object") state.weekGoals = {
 if (!state.dailyGoals || typeof state.dailyGoals !== "object") state.dailyGoals = { weekday: 0, weekend: 0 };
 if (!state.periodMemos || typeof state.periodMemos !== "object") state.periodMemos = {};
 let pendingTimeBlock = null;
+const STUDY_API_URL = document.body.dataset.studyApi || "";
+const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
+const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
+const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+const PLANNER_STAMP_URL = document.body.dataset.stampUrl || "./도장.png";
+let timerBlocksByDate = {};
+
+function blocksForDay(day, key) {
+  return day.timeBlocks.concat(timerBlocksByDate[key] || []);
+}
+
+function timerSessionBlocks(session) {
+  const blocks = [];
+  let cursor = new Date(session.started_at);
+  const finish = new Date(session.ended_at);
+  if (!Number.isFinite(cursor.getTime()) || !Number.isFinite(finish.getTime()) || finish <= cursor) return blocks;
+  while (cursor < finish) {
+    const key = isoDate(cursor);
+    const midnight = new Date(cursor);
+    midnight.setHours(24, 0, 0, 0);
+    const partEnd = new Date(Math.min(finish.getTime(), midnight.getTime()));
+    const partSeconds = Math.max(0, Math.round((partEnd - cursor) / 1000));
+    const durationMinutes = Math.floor(partSeconds / 60 + 0.5);
+    if (durationMinutes > 0) {
+      const start = cursor.getHours() * 60 + cursor.getMinutes() + cursor.getSeconds() / 60;
+      const end = partEnd.getTime() === midnight.getTime()
+        ? 1440
+        : partEnd.getHours() * 60 + partEnd.getMinutes() + partEnd.getSeconds() / 60;
+      blocks.push({
+        id: `timer-${session.id}-${key}`,
+        date: key,
+        start,
+        end,
+        durationMinutes,
+        subject: SUBJECTS[session.subject] ? session.subject : "etc",
+        source: "timer",
+        mode: session.mode,
+      });
+    }
+    cursor = partEnd;
+  }
+  return blocks;
+}
+
+async function flushPendingTimerSessions() {
+  if (!STUDY_API_URL) return;
+  let queue;
+  try {
+    queue = JSON.parse(window.localStorage.getItem(STUDY_QUEUE_KEY) || "[]");
+    if (!Array.isArray(queue)) queue = [];
+  } catch (error) { queue = []; }
+  while (queue.length) {
+    try {
+      const response = await window.fetch(STUDY_API_URL, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
+        body: JSON.stringify(queue[0]),
+      });
+      if (!response.ok) break;
+      queue.shift();
+      window.localStorage.setItem(STUDY_QUEUE_KEY, JSON.stringify(queue));
+    } catch (error) { break; }
+  }
+}
+
+async function loadTimerBlocks() {
+  if (!STUDY_API_URL) return;
+  try {
+    await flushPendingTimerSessions();
+    const response = await window.fetch(STUDY_API_URL, { credentials: "same-origin" });
+    if (!response.ok) throw new Error("study sessions unavailable");
+    const payload = await response.json();
+    const next = {};
+    (payload.sessions || []).flatMap(timerSessionBlocks).forEach(function(block) {
+      if (!next[block.date]) next[block.date] = [];
+      next[block.date].push(block);
+    });
+    timerBlocksByDate = next;
+    render();
+  } catch (error) {
+    timerBlocksByDate = {};
+  }
+}
 
 function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { /* memory-only fallback */ }
@@ -145,11 +229,14 @@ function periodDateKeys() {
   const count = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   return Array.from({ length: count }, function(_, index) { return isoDate(addDays(first, index)); });
 }
-function studyFromTimeBlocks(day) {
-  return day.timeBlocks.reduce(function(summary, block) {
+function studyFromTimeBlocks(day, key) {
+  return blocksForDay(day, key).reduce(function(summary, block) {
     const start = Number(block.start);
     const end = Number(block.end);
-    const minutes = Number.isFinite(start) && Number.isFinite(end) ? Math.max(0, end - start) : 0;
+    const storedDuration = Number(block.durationMinutes);
+    const minutes = Number.isFinite(storedDuration)
+      ? Math.max(0, storedDuration)
+      : Number.isFinite(start) && Number.isFinite(end) ? Math.max(0, end - start) : 0;
     if (minutes) summary[block.subject] = (summary[block.subject] || 0) + minutes;
     return summary;
   }, {});
@@ -161,11 +248,11 @@ function dailyGoalMinutes(key) {
 }
 function dailyGoalReached(key) {
   const goal = dailyGoalMinutes(key);
-  return goal > 0 && totalMinutes(studyFromTimeBlocks(getDay(key))) >= goal;
+  return goal > 0 && totalMinutes(studyFromTimeBlocks(getDay(key), key)) >= goal;
 }
 function periodStudy() {
   return periodDateKeys().reduce(function(summary, key) {
-    Object.entries(studyFromTimeBlocks(getDay(key))).forEach(function(entry) {
+    Object.entries(studyFromTimeBlocks(getDay(key), key)).forEach(function(entry) {
       summary[entry[0]] = (summary[entry[0]] || 0) + entry[1];
     });
     return summary;
@@ -490,13 +577,13 @@ function renderMonth() {
       cell.classList.add("has-goal-stamp");
       const stamp = document.createElement("img");
       stamp.className = "goal-stamp";
-      stamp.src = "./도장.png";
+      stamp.src = PLANNER_STAMP_URL;
       stamp.alt = "하루 목표 달성";
       cell.append(stamp);
     }
     const meta = document.createElement("span");
     meta.className = "cell-meta";
-    const studyTotal = totalMinutes(studyFromTimeBlocks(day));
+    const studyTotal = totalMinutes(studyFromTimeBlocks(day, key));
     if (studyTotal) {
       const study = document.createElement("strong");
       study.textContent = shortDuration(studyTotal);
@@ -545,10 +632,10 @@ function renderWeek() {
     const number = document.createElement("span"); number.className = "week-date"; number.textContent = (date.getMonth() + 1) + "/" + date.getDate();
     header.append(title, number);
     card.append(header);
-    const total = document.createElement("strong"); total.className = "week-total"; total.textContent = durationLabel(totalMinutes(studyFromTimeBlocks(day))); card.append(total);
+    const total = document.createElement("strong"); total.className = "week-total"; total.textContent = durationLabel(totalMinutes(studyFromTimeBlocks(day, key))); card.append(total);
     const count = document.createElement("p"); count.textContent = "일정 " + day.schedules.filter(function(item) { return !item.done; }).length + "개 남음"; card.append(count);
     const dots = document.createElement("div"); dots.className = "subject-dots";
-    Object.keys(studyFromTimeBlocks(day)).forEach(function(subject) { const dot = document.createElement("span"); dot.className = "subject-dot"; dot.style.background = SUBJECTS[subject]?.color || SUBJECTS.etc.color; dots.append(dot); });
+    Object.keys(studyFromTimeBlocks(day, key)).forEach(function(subject) { const dot = document.createElement("span"); dot.className = "subject-dot"; dot.style.background = SUBJECTS[subject]?.color || SUBJECTS.etc.color; dots.append(dot); });
     card.append(dots);
     grid.append(card);
   }
@@ -625,13 +712,13 @@ function renderWeek() {
       card.classList.add("has-goal-stamp");
       const stamp = document.createElement("img");
       stamp.className = "goal-stamp";
-      stamp.src = "./도장.png";
+      stamp.src = PLANNER_STAMP_URL;
       stamp.alt = "하루 목표 달성";
       card.append(stamp);
     }
     const total = document.createElement("strong");
     total.className = "week-total";
-    total.textContent = durationLabel(totalMinutes(studyFromTimeBlocks(day)));
+    total.textContent = durationLabel(totalMinutes(studyFromTimeBlocks(day, key)));
     card.append(total);
     const count = document.createElement("p");
     count.textContent = "\uc77c\uc815 " + day.schedules.filter(function(item) { return !item.done; }).length + "\uac1c \ub0a8\uc74c";
@@ -656,7 +743,7 @@ function renderWeek() {
     }
     const dots = document.createElement("div");
     dots.className = "subject-dots";
-    Object.keys(studyFromTimeBlocks(day)).forEach(function(subject) {
+    Object.keys(studyFromTimeBlocks(day, key)).forEach(function(subject) {
       const dot = document.createElement("span");
       dot.className = "subject-dot";
       dot.style.background = SUBJECTS[subject]?.color || SUBJECTS.etc.color;
@@ -807,7 +894,7 @@ function renderDay() {
   surface.style.width = (firstRect.width / localScale) + "px";
   surface.style.height = ((lastRect.bottom - firstRect.top) / localScale) + "px";
   timeGrid.append(surface);
-  day.timeBlocks.forEach(function(block) { renderTimeBlock(surface, block); });
+  blocksForDay(day, state.focusDate).forEach(function(block) { renderTimeBlock(surface, block); });
   enablePainting(surface);
 }
 function formatTime(minutes) {
@@ -828,7 +915,7 @@ function minuteFromPointer(event, surface) {
   return Math.min(1500, hour * 60 + minute);
 }
 function renderTimeBlock(surface, block, className) {
-  const cssClass = className || "time-highlight";
+  const cssClass = (className || "time-highlight") + (block.source === "timer" ? " is-timer-record" : "");
   const ranges = [];
   const firstHour = Math.floor(block.start / 60);
   const lastHour = Math.ceil(block.end / 60);
@@ -849,7 +936,7 @@ function renderTimeBlock(surface, block, className) {
     surface.append(item);
     ranges.push({ item: item, minutes: end - start });
   }
-  if (ranges.length) {
+  if (ranges.length && block.source !== "timer") {
     const startHandle = document.createElement("span");
     startHandle.className = "time-resize-handle";
     startHandle.dataset.resizeEdge = "start";
@@ -866,6 +953,13 @@ function renderTimeBlock(surface, block, className) {
     label.textContent = block.todoText;
     target.item.append(label);
   }
+  if (block.source === "timer" && ranges.length) {
+    const target = ranges.find(function(range) { return range.minutes >= 8; }) || ranges[0];
+    const label = document.createElement("span");
+    label.className = "time-highlight-label timer-record-label";
+    label.textContent = SUBJECTS[block.subject]?.label || "기타";
+    target.item.append(label);
+  }
   return ranges.map(function(range) { return range.item; });
 }
 function syncTimeBlockTodoText(day, todoIndex, text) {
@@ -878,10 +972,17 @@ function syncTimeBlockTodoText(day, todoIndex, text) {
   });
 }
 function timeBlockOverlaps(day, start, end, excludedId) {
-  return day.timeBlocks.some(function(block) {
+  return blocksForDay(day, state.focusDate).some(function(block) {
     if (excludedId && String(block.id) === String(excludedId)) return false;
     return start < Number(block.end) && end > Number(block.start);
   });
+}
+function timeRangeHasElapsed(key, endMinutes) {
+  const today = isoDate(new Date());
+  if (key < today) return true;
+  if (key > today) return false;
+  const now = new Date();
+  return Number(endMinutes) <= now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
 }
 function checklistCandidates(day, subject) {
   return day.todos.map(function(todo, index) { return { todo: todo, index: index }; }).filter(function(entry) {
@@ -938,6 +1039,7 @@ function enablePainting(surface) {
     const day = getDay(state.focusDate);
     const block = day.timeBlocks.find(function(item) { return String(item.id) === String(current.blockId); });
     if (!block || current.blocked || current.nextEnd <= current.nextStart) { renderDay(); return; }
+    if (!timeRangeHasElapsed(state.focusDate, current.nextEnd)) { window.alert("아직 지나지 않은 시간은 기록할 수 없습니다."); renderDay(); return; }
     block.start = current.nextStart;
     block.end = current.nextEnd;
     day.timeBlockRedo = [];
@@ -955,6 +1057,7 @@ function enablePainting(surface) {
     start = null;
     const day = getDay(state.focusDate);
     const subject = els.subjectSelect.value;
+    if (!timeRangeHasElapsed(state.focusDate, to)) { window.alert("시간이 지난 뒤에 기록할 수 있습니다."); renderDay(); return; }
     if (timeBlockOverlaps(day, from, to) || to <= from) { renderDay(); return; }
     const candidates = checklistCandidates(day, subject);
     if (!candidates.length) {
@@ -1063,7 +1166,7 @@ function renderDayScheduleList(day) {
 }
 function renderSelectedDay() {
   const day = getDay(state.focusDate);
-  const study = state.view === "day" ? studyFromTimeBlocks(day) : periodStudy();
+  const study = state.view === "day" ? studyFromTimeBlocks(day, state.focusDate) : periodStudy();
   const total = totalMinutes(study);
   const label = dateLabel(state.focusDate);
   els.todoDateLabel.textContent = state.view === "day" ? label : "";
@@ -1193,16 +1296,9 @@ els.todoList.addEventListener("click", function(event) {
 els.memoInput.addEventListener("input", function() { saveCurrentMemo(els.memoInput.value); });
 els.feedbackInput.addEventListener("input", function() { getDay(state.focusDate).feedback = els.feedbackInput.value; saveState(); });
 
-window.addPlannerTimeBlock = function(data) {
-  const day = getDay(data.date);
-  day.timeBlocks.push({ id: makeId(), start: Number(data.start), end: Number(data.end), subject: data.subject, source: data.source || "timer", todoIndex: data.todoIndex ?? null, todoText: data.todoText || "" });
-  day.timeBlockRedo = [];
-  saveState();
-  if (state.view === "day" && state.focusDate === data.date) render();
-};
-
 setupPlannerInkEditors();
 render();
+loadTimerBlocks();
 
 let plannerResizeTimer = 0;
 window.addEventListener("resize", function() {

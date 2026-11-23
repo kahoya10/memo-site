@@ -1,0 +1,69 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f1ea" />
+  <title>삽구의 서당 — 나의 필기 공간</title>
+  <meta name="description" content="캘린더, 타이머, 나의 필기를 한곳에서 관리하는 공부 기록 앱" />
+  <link rel="stylesheet" href="{% static 'shell/main.css' %}?v=20261123-8" />
+</head>
+<body data-notebook-count="{{ notebook_count }}" data-profile-user="{{ user.username }}">
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-logo-wrap">
+          <img class="brand-logo" src="{% static 'shell/삽구의 서당 로고.png' %}" alt="삽구의 서당" />
+        </span>
+      </div>
+      <div class="topbar-actions">
+        <div class="today-chip" id="todayChip"></div>
+        <label class="profile-avatar" id="profileAvatar">
+          <input id="profileAvatarInput" type="file" accept="image/*" />
+          <img id="profileAvatarPreview" alt="" />
+          <span class="profile-avatar-initial" id="profileAvatarInitial">{{ user.username|slice:":1"|upper }}</span>
+          <span class="sr-only">프로필 사진 선택</span>
+        </label>
+        <span class="account-name">{{ user.username }} 님</span>
+        <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout-button" type="submit">로그아웃</button></form>
+      </div>
+      <img class="roof-lantern" src="{% static 'shell/따뜻한 노란빛의 귀여운 등불.webp' %}" alt="" aria-hidden="true" />
+    </header>
+
+    <section class="hero">
+      <div class="intro">
+        <div class="wagging-dog" role="img" aria-label="꼬리를 흔드는 강아지">
+          <img class="dog-frame dog-frame-one is-active" src="{% static 'shell/hd1.png' %}" alt="" />
+          <img class="dog-frame dog-frame-two" src="{% static 'shell/hd2.png' %}" alt="" />
+          <img class="dog-table" src="{% static 'shell/수채화풍 낮은 원목 테이블.webp' %}" alt="" aria-hidden="true" />
+        </div>
+      </div>
+
+      <div class="feature-grid" aria-label="주요 기능">
+        <a class="feature-card image-feature-card calendar-card" href="{% url 'notes:planner' %}" aria-label="캘린더 열기">
+          <img class="feature-card-image" src="{% static 'shell/icon-calendar-transparent.png' %}" alt="달력" />
+          <span class="sr-only" id="calendarMeta"></span>
+        </a>
+        <a class="feature-card image-feature-card schedule-card" href="{% url 'notes:timer' %}" aria-label="타이머 열기">
+          <img class="feature-card-image" src="{% static 'shell/icon-timer-transparent.png' %}" alt="모래시계" />
+          <span class="sr-only" id="scheduleMeta"></span>
+        </a>
+        <a class="feature-card image-feature-card notes-card" href="{% url 'notes:library' %}" aria-label="나의 필기 열기">
+          <img class="feature-card-image" src="{% static 'shell/icon-notes-transparent.png' %}" alt="붓글씨 메모" />
+          <span class="sr-only" id="notesMeta"></span>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <section class="workspace-panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+      <header class="panel-head"><div><p class="panel-kicker" id="panelKicker"></p><h2 id="panelTitle"></h2></div><div class="panel-actions"><button class="secondary-btn" id="goHome" type="button">시작 화면</button><button class="icon-btn" id="closePanel" type="button" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div></header>
+      <div class="panel-body" id="panelBody"></div>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="{% static 'shell/app.js' %}?v=20261123-1"></script>
+</body>
+</html>

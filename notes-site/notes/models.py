@@ -196,3 +196,53 @@ class Page(models.Model):
 
     def __str__(self):
         return f"{self.chapter} / {self.position + 1}쪽"
+
+
+class StudySession(models.Model):
+    SUBJECTS = [
+        ("korean", "국어"),
+        ("english", "영어"),
+        ("math", "수학"),
+        ("science", "과학"),
+        ("social", "사회"),
+        ("etc", "기타"),
+    ]
+    MODES = [
+        ("normal", "일반"),
+        ("pomodoro", "뽀모도로"),
+        ("mock", "모의고사"),
+    ]
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name="사용자",
+        on_delete=models.CASCADE,
+        related_name="study_sessions",
+    )
+    client_id = models.CharField("클라이언트 기록 ID", max_length=80)
+    subject = models.CharField("과목", max_length=20, choices=SUBJECTS)
+    mode = models.CharField("타이머 모드", max_length=20, choices=MODES)
+    started_at = models.DateTimeField("시작 시각")
+    ended_at = models.DateTimeField("종료 시각")
+    duration_seconds = models.PositiveIntegerField("집중 시간(초)")
+    created_at = models.DateTimeField("저장 시각", auto_now_add=True)
+
+    class Meta:
+        ordering = ["started_at", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "client_id"],
+                name="unique_study_session_per_user_client_id",
+            )
+        ]
+        indexes = [models.Index(fields=["owner", "started_at"])]
+        verbose_name = "타이머 공부 기록"
+        verbose_name_plural = "타이머 공부 기록"
+
+    def __str__(self):
+        return f"{self.owner} · {self.get_subject_display()} · {self.started_at:%Y-%m-%d %H:%M}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValidationError("타이머 공부 기록은 수정할 수 없습니다.")
+        super().save(*args, **kwargs)

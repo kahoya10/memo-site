@@ -1,0 +1,35 @@
+{% load static %}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f1ea" />
+  <title>로그인 · 삽구의 서당</title>
+  <link rel="stylesheet" href="{% static 'shell/main.css' %}?v=20261120-1" />
+</head>
+<body class="auth-main-page">
+  <main class="shell auth-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg></span><span><strong>삽구의 서당</strong></span></div>
+    </header>
+    <section class="auth-main-grid">
+      <div class="auth-dog" role="img" aria-label="기다리는 강아지"><img src="{% static 'shell/hd1.png' %}" alt="" /></div>
+      <section class="surface auth-main-card">
+        <p class="eyebrow">다시 온 것을 환영해요</p>
+        <h1>서당에 들어가기</h1>
+        <p class="auth-description">타이머와 플래너, 필기 기록을 하나의 계정으로 이어서 사용해요.</p>
+        <form method="post" class="auth-form">
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="auth-errors">{{ form.non_field_errors }}</div>{% endif %}
+          <label>아이디 {{ form.username }}</label>
+          <label>비밀번호 {{ form.password }}</label>
+          <input type="hidden" name="next" value="{{ next }}" />
+          <button class="primary-btn auth-submit" type="submit">로그인</button>
+        </form>
+        <p class="auth-switch">처음 왔나요? <a href="{% url 'signup' %}">초대 코드로 회원가입</a></p>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

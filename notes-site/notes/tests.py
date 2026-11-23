@@ -1,10 +1,13 @@
 import json
+from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from .models import Chapter, DrawingPreferences, InviteCode, Notebook, Page
+from .models import Chapter, DrawingPreferences, InviteCode, Notebook, Page, StudySession
 
 
 class NotesFlowTests(TestCase):
@@ -47,6 +50,42 @@ class NotesFlowTests(TestCase):
         self.assertEqual(self.page.sticky_notes[0]["text"], "암기")
         self.assertEqual(self.page.recognition_status, "reviewed")
 
+    @patch("notes.views.recognize_handwriting_image", return_value="국어\n훈민정음")
+    def test_owner_can_recognize_handwriting_and_save_result(self, recognize_mock):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("notes:page_recognize", args=[self.page.id]),
+            data=json.dumps({"image_data": "data:image/png;base64,aGFuZHdyaXRpbmc="}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["recognized_text"], "국어\n훈민정음")
+        recognize_mock.assert_called_once()
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.recognized_text, "국어\n훈민정음")
+        self.assertEqual(self.page.recognition_status, "needs_review")
+
+    def test_handwriting_recognition_rejects_unsupported_image(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("notes:page_recognize", args=[self.page.id]),
+            data=json.dumps({"image_data": "data:image/gif;base64,aGFuZHdyaXRpbmc="}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_other_user_cannot_recognize_owner_handwriting(self):
+        self.client.force_login(self.other)
+        response = self.client.post(
+            reverse("notes:page_recognize", args=[self.page.id]),
+            data=json.dumps({"image_data": "data:image/png;base64,aGFuZHdyaXRpbmc="}),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+
     def test_recognized_text_is_searchable(self):
         self.page.recognized_text = "세종대왕은 훈민정음을 창제했다."
         self.page.save(update_fields=["recognized_text"])
@@ -62,7 +101,7 @@ class NotesFlowTests(TestCase):
         editor = self.client.get(reverse("notes:page_editor", args=[self.notebook.id, self.page.id]))
         study = self.client.get(reverse("notes:study", args=[self.notebook.id]))
         self.assertEqual(editor.status_code, 200)
-        self.assertContains(editor, "글씨 인식 확인")
+        self.assertContains(editor, "손글씨 자동 인식")
         self.assertContains(editor, "불투명도")
         self.assertContains(editor, "page-thumbnail")
         self.assertContains(editor, "+ 챕터")
@@ -169,7 +208,7 @@ class InviteSignupTests(TestCase):
                 "invite_code": "FRIEND-01",
             },
         )
-        self.assertRedirects(response, reverse("notes:library"))
+        self.assertRedirects(response, reverse("notes:dashboard"))
         invite.refresh_from_db()
         self.assertEqual(invite.used_count, 1)
 
@@ -185,3 +224,119 @@ class InviteSignupTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "올바른 초대 코드가 아닙니다")
+
+
+class StudySessionTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.owner = User.objects.create_user(username="timer-owner", password="safe-pass-123")
+        self.other = User.objects.create_user(username="timer-other", password="safe-pass-123")
+
+    def session_payload(self, client_id="session-1"):
+        ended_at = timezone.now() - timedelta(seconds=2)
+        started_at = ended_at - timedelta(minutes=12, seconds=31)
+        return {
+            "client_id": client_id,
+            "subject": "math",
+            "mode": "normal",
+            "started_at": started_at.isoformat(),
+            "ended_at": ended_at.isoformat(),
+            "duration_seconds": 751,
+        }
+
+    def test_timer_and_planner_require_login(self):
+        timer = self.client.get(reverse("notes:timer"))
+        planner = self.client.get(reverse("notes:planner"))
+        self.assertEqual(timer.status_code, 302)
+        self.assertEqual(planner.status_code, 302)
+        self.assertTrue(timer.url.startswith(reverse("notes:dashboard")))
+        self.assertTrue(planner.url.startswith(reverse("notes:dashboard")))
+
+    def test_logged_in_pages_receive_shared_api_url(self):
+        self.client.force_login(self.owner)
+        timer = self.client.get(reverse("notes:timer"))
+        planner = self.client.get(reverse("notes:planner"))
+        self.assertContains(timer, reverse("notes:study_sessions_api"))
+        self.assertContains(planner, reverse("notes:study_sessions_api"))
+        self.assertNotContains(timer, 'data-csrf-token=""')
+        self.assertNotContains(timer, "NOTPROVIDED")
+        self.assertContains(timer, "과목 선택")
+        self.assertContains(planner, "스터디 플래너")
+
+    def test_timer_session_is_saved_for_logged_in_user(self):
+        self.client.force_login(self.owner)
+        response = self.client.post(
+            reverse("notes:study_sessions_api"),
+            data=json.dumps(self.session_payload()),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        session = StudySession.objects.get(owner=self.owner)
+        self.assertEqual(session.subject, "math")
+        self.assertEqual(session.duration_seconds, 751)
+
+    def test_duplicate_client_id_does_not_duplicate_session(self):
+        self.client.force_login(self.owner)
+        payload = self.session_payload()
+        for _ in range(2):
+            self.client.post(reverse("notes:study_sessions_api"), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(StudySession.objects.filter(owner=self.owner).count(), 1)
+
+    def test_user_only_reads_own_sessions(self):
+        ended_at = timezone.now() - timedelta(seconds=1)
+        StudySession.objects.create(
+            owner=self.other,
+            client_id="other-session",
+            subject="korean",
+            mode="normal",
+            started_at=ended_at - timedelta(minutes=5),
+            ended_at=ended_at,
+            duration_seconds=300,
+        )
+        self.client.force_login(self.owner)
+        response = self.client.get(reverse("notes:study_sessions_api"))
+        self.assertEqual(response.json()["sessions"], [])
+
+    def test_under_thirty_seconds_rounds_to_no_record(self):
+        self.client.force_login(self.owner)
+        payload = self.session_payload("short-session")
+        payload["duration_seconds"] = 29
+        payload["ended_at"] = (timezone.now() - timedelta(seconds=1)).isoformat()
+        payload["started_at"] = (timezone.now() - timedelta(seconds=31)).isoformat()
+        response = self.client.post(reverse("notes:study_sessions_api"), data=json.dumps(payload), content_type="application/json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["recorded"])
+        self.assertFalse(StudySession.objects.filter(owner=self.owner).exists())
+
+
+class MainAuthenticationTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.user = User.objects.create_user(username="main-user", password="safe-pass-123")
+
+    def test_anonymous_main_page_contains_login_form(self):
+        response = self.client.get(reverse("notes:dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "서당에 들어가기")
+        self.assertContains(response, "초대 코드로 회원가입")
+        self.assertNotContains(response, "나의 필기")
+
+    def test_login_happens_on_main_page(self):
+        response = self.client.post(
+            reverse("notes:dashboard"),
+            {"username": "main-user", "password": "safe-pass-123"},
+        )
+        self.assertRedirects(response, reverse("notes:dashboard"))
+        dashboard = self.client.get(reverse("notes:dashboard"))
+        self.assertContains(dashboard, "나의 필기")
+        self.assertNotContains(dashboard, "미리 알림")
+        self.assertContains(dashboard, "main-user 님")
+        self.assertContains(dashboard, reverse("notes:library"))
+        self.assertContains(dashboard, 'data-notebook-count="0"')
+
+    def test_login_returns_to_requested_feature(self):
+        response = self.client.post(
+            reverse("notes:dashboard"),
+            {"username": "main-user", "password": "safe-pass-123", "next": reverse("notes:timer")},
+        )
+        self.assertRedirects(response, reverse("notes:timer"))

@@ -720,7 +720,46 @@
   document.getElementById("pageTitle").addEventListener("input", markChanged);
 
   const recognitionDialog = document.getElementById("recognitionDialog");
-  document.getElementById("recognizeButton").addEventListener("click", () => { document.getElementById("inkPreview").style.backgroundImage = `url(${canvas.toDataURL("image/png")})`; recognitionDialog.showModal(); });
+  const recognizeButton = document.getElementById("recognizeButton");
+  const recognitionNotice = document.getElementById("recognitionNotice");
+  function recognitionImageData() {
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height;
+    const exportContext = exportCanvas.getContext("2d");
+    exportContext.fillStyle = "#ffffff";
+    exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+    exportContext.drawImage(canvas, 0, 0);
+    return exportCanvas.toDataURL("image/png");
+  }
+  recognizeButton.addEventListener("click", async () => {
+    const imageData = recognitionImageData();
+    document.getElementById("inkPreview").style.backgroundImage = `url(${imageData})`;
+    recognitionDialog.showModal();
+    if (!strokes.length) {
+      recognitionNotice.innerHTML = "<strong>필기 없음:</strong> 먼저 종이에 손글씨를 작성해 주세요.";
+      return;
+    }
+    recognizeButton.disabled = true;
+    recognizeButton.textContent = "인식 중…";
+    recognitionNotice.innerHTML = "<strong>서버에서 인식 중:</strong> 손글씨를 읽고 있어요. 첫 실행은 모델을 준비하느라 조금 더 걸릴 수 있어요.";
+    try {
+      const response = await fetch(app.dataset.recognizeUrl, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+        body: JSON.stringify({image_data: imageData}),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || "손글씨 인식에 실패했어요.");
+      document.getElementById("recognizedText").value = result.recognized_text;
+      recognitionNotice.innerHTML = "<strong>로컬 인식 완료:</strong> 잘못 읽힌 부분이 없는지 확인하고 수정해 주세요.";
+    } catch (error) {
+      recognitionNotice.innerHTML = `<strong>자동 인식 실패:</strong> ${String(error.message || error)}`;
+    } finally {
+      recognizeButton.disabled = false;
+      recognizeButton.textContent = "손글씨 자동 인식";
+    }
+  });
   document.querySelector("[data-close-recognition]").addEventListener("click", () => recognitionDialog.close());
   document.getElementById("confirmRecognition").addEventListener("click", async () => { await savePage(true); recognitionDialog.close(); });
 
