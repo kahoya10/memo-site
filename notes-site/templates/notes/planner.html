@@ -35,6 +35,7 @@
       <dialog class="planner-dialog" id="scheduleDialog"><div class="dialog-card"><p class="card-kicker">SCHEDULE</p><h2>일정 추가</h2><p class="dialog-date" id="scheduleDialogDate"></p><form id="scheduleForm"><input id="scheduleInput" maxlength="80" placeholder="이 날의 일정" aria-label="일정 입력" /><div class="dialog-actions"><button type="button" id="scheduleCancel">취소</button><button type="submit">추가</button></div></form></div></dialog>
       <dialog class="planner-dialog" id="timeBlockDialog"><div class="dialog-card"><p class="card-kicker">CHECK LIST</p><h2>체크리스트 번호 선택</h2><p class="dialog-date" id="timeBlockRange"></p><form id="timeBlockForm"><select id="timeBlockTodoSelect" aria-label="체크리스트 번호"></select><div class="dialog-actions"><button type="button" id="timeBlockCancel">취소</button><button type="submit">기록</button></div></form></div></dialog>
     </main>
-    <script src="{% static 'shell/planner.js' %}?v=account-1"></script>
+    <script src="{% static 'shell/planner-storage.js' %}?v=20261126-1"></script>
+    <script src="{% static 'shell/planner.js' %}?v=20261126-2"></script>
   </body>
 </html>

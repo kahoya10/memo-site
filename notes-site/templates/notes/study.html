@@ -2,27 +2,42 @@
 {% load static %}
 {% block title %}{{ notebook.title }} · 학습{% endblock %}
 {% block content %}
-<section class="study-shell">
-  <div class="page-heading">
-    <div><a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a><p class="eyebrow">학습</p><h1>{{ notebook.title }}</h1><p class="muted">내가 고른 핵심어를 빈칸으로 바꿔 복습해요.</p></div>
+<section id="studyApp" class="study-shell" data-save-url="{% url 'notes:study_result' notebook.id %}">
+  <header class="page-heading">
+    <div><a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a><h1>{{ notebook.title }} 학습</h1></div>
     <a class="secondary-button" href="{% url 'notes:editor' notebook.id %}">필기로 돌아가기</a>
-  </div>
-  {% if study_pages %}
-    <div class="study-layout">
-      <aside class="study-page-list">
-        <h2>학습할 페이지</h2>
-        {% for page in study_pages %}<button type="button" data-study-index="{{ forloop.counter0 }}"><small>{{ page.chapter.title }}</small>{{ page.title }}</button>{% endfor %}
-      </aside>
-      <article class="quiz-card">
-        <div class="quiz-meta"><span id="quizLocation"></span><span id="quizCount"></span></div>
-        <div id="quizText" class="quiz-text"></div>
-        <div class="quiz-actions"><button id="toggleAnswer" class="primary-button" type="button">정답 보기</button><button id="nextQuiz" class="secondary-button" type="button">다음 문제</button></div>
-      </article>
+  </header>
+  <nav class="mode-buttons" aria-label="학습 방식">
+    <button class="small-button" type="button" data-mode="blank">빈칸 테스트</button>
+    <button class="small-button" type="button" data-mode="card">카드 매치</button>
+    <button class="small-button" type="button" data-mode="speed">스피드 퀴즈</button>
+  </nav>
+  <article class="quiz-card study-game">
+    {% csrf_token %}
+    <header class="quiz-meta"><span id="quizLocation"></span><span id="quizCount"></span><strong id="quizTime" hidden></strong></header>
+    <label id="quizSource" class="quiz-source" hidden>학습할 페이지 <select id="quizPage"></select></label>
+    <p id="quizMessage" role="status"></p>
+    <p id="quizText" class="quiz-text" hidden></p>
+    <div id="quizInk" class="quiz-ink" hidden><canvas aria-label="손글씨 문제"></canvas></div>
+    <form id="quizInput" class="quiz-input" hidden><label>내 답 <input name="answer" autocomplete="off" required></label><button class="small-button primary" type="submit">제출</button></form>
+    <div id="cardGame" class="matching-columns" hidden><div><h2>문제 카드</h2><div id="cardPrompts"></div></div><div><h2>정답 카드</h2><div id="cardAnswers"></div></div></div>
+    <div class="quiz-actions">
+      <button id="startQuiz" class="primary-button" type="button" hidden>시작</button>
+      <button id="toggleAnswer" class="primary-button" type="button" hidden>정답 보기</button>
+      <button id="markCorrect" class="primary-button" type="button" hidden>맞혔어요</button>
+      <button id="markIncorrect" class="secondary-button" type="button" hidden>틀렸어요</button>
+      <button id="finishQuiz" class="secondary-button" type="button" hidden>기록 저장하고 끝내기</button>
+      <button id="saveQuiz" class="secondary-button" type="button" hidden>다시 저장</button>
+      <button id="reloadQuiz" class="primary-button" type="button" hidden>다시 시작</button>
     </div>
-  {% else %}
-    <section class="empty-state"><div class="empty-dog" aria-hidden="true">ㅅ</div><h2>아직 만들 수 있는 문제가 없어요</h2><p>필기 화면의 ‘글씨 인식 확인’에서 인식 내용과 핵심어를 저장해 주세요.</p><a class="primary-button" href="{% url 'notes:editor' notebook.id %}">필기에서 준비하기</a></section>
-  {% endif %}
+  </article>
+  <section class="quiz-records" aria-labelledby="quizRecordsTitle">
+    <h2 id="quizRecordsTitle">학습 기록</h2>
+    {% if statistics %}<ul>{% for attempt, score, total in statistics %}<li>{{ attempt.created_at|date:"m.d H:i" }} · {{ attempt.get_mode_display }} · {{ score }}/{{ total }} · {{ attempt.duration_seconds }}초</li>{% endfor %}</ul>
+    {% else %}<p>공책에서 퀴즈를 마치면 이곳에 점수와 시간이 쌓여요.</p>{% endif %}
+    {% if missed %}<h3>자주 틀린 문제</h3><ul>{% for label, count in missed %}<li>{{ label }} · {{ count }}회</li>{% endfor %}</ul>{% endif %}
+  </section>
   {{ study_payload|json_script:"study-data" }}
 </section>
 {% endblock %}
-{% block scripts %}{% if study_pages %}<script src="{% static 'notes/study.js' %}"></script>{% endif %}{% endblock %}
+{% block scripts %}<script src="{% static 'notes/page-ink.js' %}"></script><script src="{% static 'notes/study.js' %}?v=20261125-3"></script>{% endblock %}

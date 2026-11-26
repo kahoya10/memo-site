@@ -13,6 +13,8 @@ def notebook_cover_path(instance, filename):
 
 
 def validate_cover_size(upload):
+    if getattr(upload, "_committed", False):
+        return
     if upload.size > 5 * 1024 * 1024:
         raise ValidationError("표지 PNG는 5MB 이하여야 합니다.")
 
@@ -92,6 +94,14 @@ class Notebook(models.Model):
         ("gold", "황토색"),
         ("slate", "먹청색"),
         ("hanji", "서당 한지"),
+        ("linen", "오트밀 리넨"),
+        ("marble", "푸른 마블"),
+        ("gingham", "세이지 체크"),
+        ("orchard", "살구꽃"),
+        ("moon", "달밤"),
+        ("frame", "고전 문양"),
+        ("waves", "청록 물결"),
+        ("geo", "황토 기하학"),
     ]
 
     owner = models.ForeignKey(
@@ -103,7 +113,7 @@ class Notebook(models.Model):
     title = models.CharField("공책 제목", max_length=80)
     subject = models.CharField("과목", max_length=40)
     cover_style = models.CharField(
-        "표지 색상",
+        "표지 디자인",
         max_length=20,
         choices=COVER_STYLES,
         default="blue",
@@ -149,9 +159,20 @@ class Chapter(models.Model):
 class Page(models.Model):
     PAPER_TEMPLATES = [
         ("lined", "줄 노트"),
+        ("wide-lined", "넓은 줄"),
+        ("margin-lined", "여백 줄 노트"),
         ("grid", "모눈"),
+        ("fine-grid", "촘촘한 모눈"),
+        ("dots", "도트"),
         ("blank", "무지"),
+        ("cream", "크림 무지"),
         ("hanji", "서당 한지"),
+        ("cornell", "코넬 노트"),
+        ("two-column", "두 칸 노트"),
+        ("weekly", "주간 계획"),
+        ("music", "오선지"),
+        ("handwriting", "글씨 연습"),
+        ("custom", "내 PNG 속지"),
     ]
     RECOGNITION_STATUS = [
         ("not_requested", "인식 전"),
@@ -173,11 +194,13 @@ class Page(models.Model):
         choices=PAPER_TEMPLATES,
         default="lined",
     )
+    paper_image = models.BinaryField("사용자 PNG 속지", null=True, editable=False)
     ink_data = models.JSONField("손글씨 선 데이터", default=list, blank=True)
     text_boxes = models.JSONField("텍스트 상자", default=list, blank=True)
     sticky_notes = models.JSONField("스티커 메모", default=list, blank=True)
     text_content = models.TextField("텍스트 필기", blank=True)
     recognized_text = models.TextField("인식된 텍스트", blank=True)
+    recognition_blocks = models.JSONField("손글씨 인식 위치", default=list, blank=True)
     uncertain_ranges = models.JSONField("인식 확인 필요 위치", default=list, blank=True)
     quiz_terms = models.JSONField("빈칸 단어", default=list, blank=True)
     recognition_status = models.CharField(
@@ -196,6 +219,49 @@ class Page(models.Model):
 
     def __str__(self):
         return f"{self.chapter} / {self.position + 1}쪽"
+
+
+class HandwritingSample(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="handwriting_samples")
+    glyph = models.CharField(max_length=1)
+    signature = models.BinaryField(editable=False)
+    reviewed = models.PositiveIntegerField(default=0)
+    correct = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["glyph"]
+        constraints = [models.UniqueConstraint(fields=["owner", "glyph"], name="unique_handwriting_sample_glyph")]
+
+
+class NotebookView(models.Model):
+    KINDS = [("reorder", "재배치"), ("map", "마인드맵")]
+    UNITS = [("page", "페이지"), ("paragraph", "문단")]
+
+    notebook = models.ForeignKey(Notebook, on_delete=models.CASCADE, related_name="saved_views")
+    name = models.CharField(max_length=80)
+    kind = models.CharField(max_length=10, choices=KINDS)
+    unit = models.CharField(max_length=10, choices=UNITS, default="page")
+    items = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at", "-id"]
+
+
+class QuizAttempt(models.Model):
+    MODES = [("blank", "빈칸"), ("card", "카드 매치"), ("speed", "스피드 퀴즈")]
+
+    notebook = models.ForeignKey(Notebook, on_delete=models.CASCADE, related_name="quiz_attempts")
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    client_id = models.UUIDField()
+    mode = models.CharField(max_length=10, choices=MODES)
+    duration_seconds = models.PositiveIntegerField()
+    results = models.JSONField(default=list)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        constraints = [models.UniqueConstraint(fields=["owner", "client_id"], name="unique_quiz_attempt_client")]
 
 
 class StudySession(models.Model):

@@ -4,11 +4,11 @@
 <section class="library-shell">
   <div class="page-heading">
     <div>
-      <p class="eyebrow">필기</p>
+      <a class="back-link" href="{% url 'notes:dashboard' %}">← 시작 화면</a>
       <h1>내 공책</h1>
       <p class="muted">작게 모아 보고, 제목이나 과목으로 바로 찾을 수 있어요.</p>
     </div>
-    <button class="primary-button" type="button" data-open-dialog="createNotebook">+ 새 공책</button>
+    <div class="mode-buttons"><a class="small-button" href="{% url 'notes:handwriting_settings' %}">내 손글씨 설정</a><button class="primary-button" type="button" data-open-dialog="createNotebook">+ 새 공책</button></div>
   </div>
 
   <form class="search-bar" method="get" role="search">
@@ -22,7 +22,7 @@
     <div class="notebook-grid">
       {% for notebook in notebooks %}
         <article class="notebook-card">
-          <a class="a4-cover cover-{{ notebook.cover_style }}" href="{% url 'notes:editor' notebook.id %}"
+          <a class="a4-cover cover-{{ notebook.cover_style }}{% if notebook.cover_upload %} cover-uploaded{% endif %}" href="{% url 'notes:editor' notebook.id %}"
              {% if notebook.cover_upload %}style="background-image:url('{{ notebook.cover_upload.url }}')"{% endif %}>
             <span class="cover-subject">{{ notebook.subject }}</span>
             <strong>{{ notebook.title }}</strong>
@@ -31,7 +31,8 @@
           <div class="notebook-actions">
             <a class="small-button primary" href="{% url 'notes:editor' notebook.id %}">필기하기</a>
             <a class="small-button" href="{% url 'notes:study' notebook.id %}">학습하기</a>
-            <button class="small-button disabled" type="button" title="다음 단계에서 만들 기능" disabled>정리하기 · 나중</button>
+            <a class="small-button" href="{% url 'notes:organize' notebook.id %}">정리하기</a>
+            <a class="small-button cover-edit-link" href="{% url 'notes:notebook_cover' notebook.id %}">표지 변경</a>
           </div>
           <form action="{% url 'notes:notebook_delete' notebook.id %}" method="post" onsubmit="return confirm('이 공책과 모든 페이지를 삭제할까요?');">
             {% csrf_token %}
@@ -53,21 +54,21 @@
   {% endif %}
 </section>
 
-<dialog id="createNotebook" class="form-dialog" {% if open_create %}open{% endif %}>
+<dialog id="createNotebook" class="form-dialog template-form" aria-labelledby="createNotebookTitle" {% if open_create %}open{% endif %}>
   <form action="{% url 'notes:notebook_create' %}" method="post" enctype="multipart/form-data" class="stack-form">
     {% csrf_token %}
-    <div class="dialog-heading"><div><p class="eyebrow">새 필기</p><h2>공책 만들기</h2></div><button type="button" class="icon-button" data-close-dialog aria-label="닫기">×</button></div>
-    {% for field in create_form %}
-      <label>{{ field.label }} {{ field }}
-        {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
-        {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-      </label>
-    {% endfor %}
-    <p class="form-note">직접 만든 표지는 PNG 파일(최대 5MB)로 넣을 수 있어요.</p>
+    <div class="dialog-heading"><h2 id="createNotebookTitle">공책 만들기</h2><button type="button" class="icon-button" data-close-dialog aria-label="닫기">×</button></div>
+    <div class="notebook-fields">
+      <label>{{ create_form.title.label }} {{ create_form.title }}{{ create_form.title.errors }}</label>
+      <label>{{ create_form.subject.label }} {{ create_form.subject }}{{ create_form.subject.errors }}</label>
+    </div>
+    {% include "notes/cover_fields.html" with form=create_form only %}
     <button class="primary-button wide" type="submit">만들고 필기 시작</button>
   </form>
 </dialog>
 <script>
+  const createNotebook = document.getElementById('createNotebook');
+  if (createNotebook.open) { createNotebook.close(); createNotebook.showModal(); }
   document.querySelectorAll('[data-open-dialog]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.openDialog).showModal()));
   document.querySelectorAll('[data-close-dialog]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
 </script>

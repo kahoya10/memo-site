@@ -43,6 +43,8 @@ const panelBody = $("#panelBody");
 const panelTitle = $("#panelTitle");
 const panelKicker = $("#panelKicker");
 const toast = $("#toast");
+const upcomingSchedule = $("#upcomingSchedule");
+const plannerUrl = upcomingSchedule.getAttribute("href");
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -63,10 +65,42 @@ function dateLabel(value, withYear = false) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
-function updateMeta() {
+function nearestPlannerSchedule(today) {
+  const days = plannerStorage.read()?.days ?? {};
+  const upcomingDates = Object.keys(days)
+    .filter(date => date >= today && /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  for (const date of upcomingDates) {
+    const day = new Date(`${date}T00:00:00`);
+    if (!Number.isFinite(day.getTime()) || isoDate(day) !== date) continue;
+    const schedules = days[date]?.schedules;
+    if (!Array.isArray(schedules)) continue;
+    const first = schedules.find(item => !item?.done && typeof item?.text === "string" && item.text.trim());
+    if (first) return {date, text: first.text.trim()};
+  }
+  return null;
+}
+
+function renderUpcomingSchedule() {
   const today = isoDate();
-  const upcoming = state.events.filter(item => item.date >= today).length;
-  $("#calendarMeta").textContent = upcoming ? `다가오는 일정 ${upcoming}개` : "새 일정을 기다리고 있어요";
+  const closest = nearestPlannerSchedule(today);
+  const date = $("#upcomingScheduleDate");
+  date.hidden = !closest;
+  if (closest) {
+    const label = dateLabel(closest.date, closest.date.slice(0, 4) !== today.slice(0, 4));
+    date.dateTime = closest.date;
+    date.textContent = closest.date === today ? `오늘 · ${label}` : label;
+  } else {
+    date.removeAttribute("datetime");
+    date.textContent = "";
+  }
+  $("#upcomingScheduleTitle").textContent = closest?.text ?? "다가오는 일정이 없어요.";
+  upcomingSchedule.href = closest ? `${plannerUrl}?date=${closest.date}` : plannerUrl;
+  $("#calendarMeta").textContent = closest ? `가장 가까운 일정 · ${date.textContent} · ${closest.text}` : "다가오는 일정이 없어요.";
+}
+
+function updateMeta() {
+  renderUpcomingSchedule();
   $("#scheduleMeta").textContent = "집중 시간을 재어보세요";
   const notebookCount = Number(document.body.dataset.notebookCount);
   $("#notesMeta").textContent = document.body.dataset.notebookCount !== undefined
@@ -264,40 +298,102 @@ function startDogAnimation() {
 
 function setupProfileAvatar() {
   const avatar = $("#profileAvatar");
+  const chooser = $("#profileChooser");
   const input = $("#profileAvatarInput");
   const preview = $("#profileAvatarPreview");
-  if (!avatar || !input || !preview) return;
-  const userKey = document.body.dataset.profileUser || "local";
-  const storageKey = `paper-profile-avatar:${userKey}`;
-  const showImage = source => {
-    preview.src = source;
-    avatar.classList.add("has-image");
+  const selectionButtons = $$("[data-profile-character]", chooser);
+  const photoOption = $('[data-profile-character="photo"]', chooser);
+  const message = $("#profileChooserMessage");
+  const upload = $("#profileUpload");
+  const userKey = document.body.dataset.profileUser;
+  const photoKey = `paper-profile-avatar:${userKey}`;
+  const selectionKey = `paper-profile-avatar-choice:${userKey}`;
+  let photo = null;
+  let selection = "initial";
+  let uploadVersion = 0;
+
+  try {
+    const storedPhoto = localStorage.getItem(photoKey);
+    if (storedPhoto?.startsWith("data:image/jpeg;base64,")) photo = storedPhoto;
+    selection = localStorage.getItem(selectionKey) || (photo ? "photo" : "initial");
+  } catch {
+    // The chooser can still be used for the current page.
+  }
+
+  const renderSelection = () => {
+    const character = selectionButtons.find(button => button.dataset.profileCharacter === selection);
+    const source = selection === "photo" ? photo : character?.querySelector("img")?.src;
+    if (source) preview.src = source;
+    else {
+      preview.removeAttribute("src");
+      selection = "initial";
+    }
+    avatar.classList.toggle("has-image", Boolean(source));
+    photoOption.hidden = !photo;
+    selectionButtons.forEach(button => {
+      button.setAttribute("aria-pressed", String(button.dataset.profileCharacter === selection));
+    });
   };
-  const savedImage = localStorage.getItem(storageKey);
-  if (savedImage) showImage(savedImage);
-  input.addEventListener("change", () => {
+
+  function chooseAvatar(value, newPhoto = null) {
+    selection = value;
+    if (newPhoto) photo = newPhoto;
+    let stored = true;
+    try {
+      if (newPhoto) localStorage.setItem(photoKey, newPhoto);
+      localStorage.setItem(selectionKey, selection);
+    } catch {
+      stored = false;
+    }
+    renderSelection();
+    chooser.close();
+    showToast(stored ? "프로필을 바꿨어요." : "이번 화면에 프로필을 적용했어요.");
+  }
+
+  renderSelection();
+  avatar.addEventListener("click", () => {
+    uploadVersion++;
+    message.hidden = true;
+    upload.disabled = false;
+    chooser.showModal();
+    $('[aria-pressed="true"]', chooser)?.focus();
+  });
+  selectionButtons.forEach(button => {
+    button.addEventListener("click", () => chooseAvatar(button.dataset.profileCharacter));
+  });
+  upload.addEventListener("click", () => input.click());
+  input.addEventListener("change", async () => {
     const file = input.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.addEventListener("load", () => {
-      const sourceImage = new Image();
-      sourceImage.addEventListener("load", () => {
+    input.value = "";
+    if (!file) return;
+    const version = ++uploadVersion;
+    message.hidden = true;
+    upload.disabled = true;
+    const sourceUrl = URL.createObjectURL(file);
+    try {
+      const source = new Image();
+      source.src = sourceUrl;
+      await source.decode();
+      if (version === uploadVersion && chooser.open) {
         const size = 256;
-        const cropSize = Math.min(sourceImage.naturalWidth, sourceImage.naturalHeight);
-        const cropX = (sourceImage.naturalWidth - cropSize) / 2;
-        const cropY = (sourceImage.naturalHeight - cropSize) / 2;
+        const crop = Math.min(source.naturalWidth, source.naturalHeight);
+        const x = (source.naturalWidth - crop) / 2;
+        const y = (source.naturalHeight - crop) / 2;
         const canvas = document.createElement("canvas");
         canvas.width = size;
         canvas.height = size;
-        canvas.getContext("2d").drawImage(sourceImage, cropX, cropY, cropSize, cropSize, 0, 0, size, size);
-        const avatarImage = canvas.toDataURL("image/jpeg", .86);
-        localStorage.setItem(storageKey, avatarImage);
-        showImage(avatarImage);
-        showToast("프로필 사진을 적용했어요.");
-      });
-      sourceImage.src = reader.result;
-    });
-    reader.readAsDataURL(file);
+        canvas.getContext("2d").drawImage(source, x, y, crop, crop, 0, 0, size, size);
+        chooseAvatar("photo", canvas.toDataURL("image/jpeg", .86));
+      }
+    } catch {
+      if (version === uploadVersion && chooser.open) {
+        message.textContent = "사진을 불러오지 못했어요. 다른 이미지 파일을 골라 주세요.";
+        message.hidden = false;
+      }
+    } finally {
+      URL.revokeObjectURL(sourceUrl);
+      if (version === uploadVersion) upload.disabled = false;
+    }
   });
 }
 
@@ -310,5 +406,14 @@ $("#goHome").addEventListener("click", closeWorkspace);
 overlay.addEventListener("click", event => { if (event.target === overlay) closeWorkspace(); });
 document.addEventListener("keydown", event => { if (event.key === "Escape" && overlay.classList.contains("is-open")) closeWorkspace(); });
 window.addEventListener("beforeunload", saveState);
+window.addEventListener("storage", event => {
+  if (event.key === plannerStorage.key || event.key === null) renderUpcomingSchedule();
+});
+window.addEventListener("pageshow", event => {
+  if (event.persisted) window.location.reload();
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) renderUpcomingSchedule();
+});
 updateMeta();
 if (["calendar","schedule","reminders","notes"].includes(location.hash.slice(1))) openWorkspace(location.hash.slice(1));

@@ -5,4 +5,7 @@ media/
 vendor/
 .venv/
 .env
+.env.*
+!.env.example
 ocr-models/
+staticfiles/

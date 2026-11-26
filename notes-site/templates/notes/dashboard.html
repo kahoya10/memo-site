@@ -7,9 +7,9 @@
   <meta name="theme-color" content="#f3f1ea" />
   <title>삽구의 서당 — 나의 필기 공간</title>
   <meta name="description" content="캘린더, 타이머, 나의 필기를 한곳에서 관리하는 공부 기록 앱" />
-  <link rel="stylesheet" href="{% static 'shell/main.css' %}?v=20261123-8" />
+  <link rel="stylesheet" href="{% static 'shell/main.css' %}?v=20261126-2" />
 </head>
-<body data-notebook-count="{{ notebook_count }}" data-profile-user="{{ user.username }}">
+<body data-notebook-count="{{ notebook_count }}" data-profile-user="{{ user.username }}" data-user-id="{{ user.pk }}">
   <main class="shell">
     <header class="topbar">
       <div class="brand">
@@ -19,12 +19,10 @@
       </div>
       <div class="topbar-actions">
         <div class="today-chip" id="todayChip"></div>
-        <label class="profile-avatar" id="profileAvatar">
-          <input id="profileAvatarInput" type="file" accept="image/*" />
+        <button class="profile-avatar" id="profileAvatar" type="button" aria-haspopup="dialog" aria-controls="profileChooser" aria-label="프로필 변경">
           <img id="profileAvatarPreview" alt="" />
           <span class="profile-avatar-initial" id="profileAvatarInitial">{{ user.username|slice:":1"|upper }}</span>
-          <span class="sr-only">프로필 사진 선택</span>
-        </label>
+        </button>
         <span class="account-name">{{ user.username }} 님</span>
         <form action="{% url 'logout' %}" method="post">{% csrf_token %}<button class="logout-button" type="submit">로그아웃</button></form>
       </div>
@@ -38,6 +36,11 @@
           <img class="dog-frame dog-frame-two" src="{% static 'shell/hd2.png' %}" alt="" />
           <img class="dog-table" src="{% static 'shell/수채화풍 낮은 원목 테이블.webp' %}" alt="" aria-hidden="true" />
         </div>
+        <a class="schedule-bubble" id="upcomingSchedule" href="{% url 'notes:planner' %}">
+          <span class="schedule-bubble-label">가장 가까운 일정</span>
+          <time class="schedule-bubble-date" id="upcomingScheduleDate" hidden></time>
+          <strong class="schedule-bubble-title" id="upcomingScheduleTitle">다가오는 일정이 없어요.</strong>
+        </a>
       </div>
 
       <div class="feature-grid" aria-label="주요 기능">
@@ -57,6 +60,30 @@
     </section>
   </main>
 
+  <dialog class="profile-chooser" id="profileChooser" aria-labelledby="profileChooserTitle">
+    <div class="profile-chooser-inner">
+      <header class="profile-chooser-heading">
+        <h2 id="profileChooserTitle">프로필 고르기</h2>
+        <form method="dialog"><button class="profile-chooser-close" type="submit" aria-label="닫기">×</button></form>
+      </header>
+      <div class="profile-character-grid">
+        {% for character, label in profile_characters %}
+          <button class="profile-character" type="button" data-profile-character="{{ character }}" aria-pressed="false">
+            <img src="{% static 'shell/avatars/dogs/'|add:character|add:'.webp' %}" alt="" width="112" height="112" loading="lazy" />
+            <span>{{ label }}</span>
+          </button>
+        {% endfor %}
+      </div>
+      <div class="profile-chooser-actions">
+        <button type="button" data-profile-character="initial" aria-pressed="false">기본 프로필</button>
+        <button type="button" data-profile-character="photo" aria-pressed="false" hidden>내 사진</button>
+        <button id="profileUpload" type="button">사진 올리기</button>
+        <input id="profileAvatarInput" type="file" accept="image/*" hidden />
+      </div>
+      <p class="profile-chooser-message" id="profileChooserMessage" role="status" hidden></p>
+    </div>
+  </dialog>
+
   <div class="overlay" id="overlay" aria-hidden="true">
     <section class="workspace-panel" role="dialog" aria-modal="true" aria-labelledby="panelTitle">
       <header class="panel-head"><div><p class="panel-kicker" id="panelKicker"></p><h2 id="panelTitle"></h2></div><div class="panel-actions"><button class="secondary-btn" id="goHome" type="button">시작 화면</button><button class="icon-btn" id="closePanel" type="button" aria-label="닫기"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div></header>
@@ -64,6 +91,7 @@
     </section>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="{% static 'shell/app.js' %}?v=20261123-1"></script>
+  <script src="{% static 'shell/planner-storage.js' %}?v=20261126-1"></script>
+  <script src="{% static 'shell/app.js' %}?v=20261126-2"></script>
 </body>
 </html>

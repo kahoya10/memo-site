@@ -1,13 +1,28 @@
+import base64
+import io
 import json
 from datetime import timedelta
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Chapter, DrawingPreferences, InviteCode, Notebook, Page, StudySession
+from .models import Chapter, DrawingPreferences, HandwritingSample, InviteCode, Notebook, NotebookView, Page, QuizAttempt, StudySession
+
+
+def sample_png():
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGB", (70, 70), "white")
+    ImageDraw.Draw(image).line([(20, 10), (42, 10), (24, 58)], fill="black", width=4)
+    output = io.BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
 
 
 class NotesFlowTests(TestCase):
@@ -36,7 +51,7 @@ class NotesFlowTests(TestCase):
                     "quiz_terms": ["세종대왕", "훈민정음"],
                     "text_boxes": [{"id": "text-1", "x": 0.1, "y": 0.2, "width": 0.3, "height": 0.1, "text": "설명"}],
                     "sticky_notes": [{"id": "memo-1", "x": 0.5, "y": 0.2, "width": 0.2, "height": 0.15, "text": "암기", "color": "#FFF2A8"}],
-                    "paper_template": "grid",
+                    "paper_template": "cornell",
                     "recognition_reviewed": True,
                 }
             ),
@@ -44,15 +59,22 @@ class NotesFlowTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.page.refresh_from_db()
-        self.assertEqual(self.page.paper_template, "grid")
+        self.assertEqual(self.page.paper_template, "cornell")
         self.assertEqual(self.page.quiz_terms, ["세종대왕", "훈민정음"])
         self.assertEqual(self.page.text_boxes[0]["text"], "설명")
         self.assertEqual(self.page.sticky_notes[0]["text"], "암기")
         self.assertEqual(self.page.recognition_status, "reviewed")
 
-    @patch("notes.views.recognize_handwriting_image", return_value="국어\n훈민정음")
-    def test_owner_can_recognize_handwriting_and_save_result(self, recognize_mock):
+    @patch("notes.views.recognize_handwriting_image", return_value=[
+        {"text": "국어", "bounds": [.1, .1, .2, .2], "confidence": .95},
+        {"text": "훈민정음", "bounds": [.1, .3, .5, .4], "confidence": .4},
+    ])
+    def test_recognition_preview_is_saved_only_after_confirmation(self, recognize_mock):
         self.client.force_login(self.owner)
+        self.page.recognized_text = "기존 결과"
+        self.page.quiz_terms = ["기존"]
+        self.page.recognition_status = "reviewed"
+        self.page.save(update_fields=["recognized_text", "quiz_terms", "recognition_status"])
         response = self.client.post(
             reverse("notes:page_recognize", args=[self.page.id]),
             data=json.dumps({"image_data": "data:image/png;base64,aGFuZHdyaXRpbmc="}),
@@ -60,11 +82,47 @@ class NotesFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["recognized_text"], "국어\n훈민정음")
+        draft = response.json()
+        self.assertEqual(draft["recognized_text"], "국어\n훈민정음")
+        self.assertEqual(draft["blocks"][1]["bounds"], [.1, .3, .5, .4])
         recognize_mock.assert_called_once()
+        save_url = reverse("notes:page_save", args=[self.page.id])
+        self.assertEqual(self.client.post(save_url, {
+            "title": "자동 저장", "recognized_text": "취소한 수정", "quiz_terms": ["취소"],
+        }, content_type="application/json").status_code, 200)
         self.page.refresh_from_db()
-        self.assertEqual(self.page.recognized_text, "국어\n훈민정음")
-        self.assertEqual(self.page.recognition_status, "needs_review")
+        self.assertEqual(self.page.title, "자동 저장")
+        self.assertEqual(self.page.recognized_text, "기존 결과")
+        self.assertEqual(self.page.quiz_terms, ["기존"])
+        self.assertEqual(self.page.recognition_blocks, [])
+
+        review = {
+            "recognition_reviewed": True, "recognized_text": "국어\n수정한 결과",
+            "quiz_terms": ["수정"], "recognition_token": draft["recognition_token"],
+        }
+        other_page = Page.objects.create(chapter=self.chapter)
+        other_url = reverse("notes:page_save", args=[other_page.id])
+        self.assertEqual(self.client.post(other_url, review, content_type="application/json").status_code, 400)
+        self.assertEqual(self.client.post(save_url, review, content_type="application/json").status_code, 200)
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.recognized_text, "국어\n수정한 결과")
+        self.assertEqual(self.page.quiz_terms, ["수정"])
+        self.assertEqual(self.page.recognition_status, "reviewed")
+        self.assertEqual(self.page.recognition_blocks[1]["text"], "수정한 결과")
+        self.assertEqual(self.page.uncertain_ranges, [])
+
+    @patch("notes.views.recognize_handwriting_image", return_value=[{"text": "선택", "bounds": [0, 0, 1, 1], "confidence": .9}])
+    def test_recognizing_selection_preserves_page_transcript(self, recognize_mock):
+        self.page.recognized_text = "기존 인식 결과"
+        self.page.save(update_fields=["recognized_text"])
+        self.client.force_login(self.owner)
+        response = self.client.post(reverse("notes:page_recognize", args=[self.page.id]), {
+            "image_data": "data:image/png;base64,aGFuZHdyaXRpbmc=", "selection": True,
+        }, content_type="application/json")
+        self.assertEqual(response.json()["recognized_text"], "선택")
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.recognized_text, "기존 인식 결과")
+        self.assertTrue(recognize_mock.call_args.args[-1])
 
     def test_handwriting_recognition_rejects_unsupported_image(self):
         self.client.force_login(self.owner)
@@ -188,12 +246,167 @@ class NotesFlowTests(TestCase):
         self.client.force_login(self.owner)
         response = self.client.post(
             reverse("notes:notebook_create"),
-            {"title": "과학 필기", "subject": "과학", "cover_style": "blue"},
+            {"title": "과학 필기", "subject": "과학", "cover_style": "moon"},
         )
         self.assertEqual(response.status_code, 302)
         created = Notebook.objects.get(title="과학 필기")
         self.assertEqual(created.owner, self.owner)
+        self.assertEqual(created.cover_style, "moon")
         self.assertEqual(Page.objects.filter(chapter__notebook=created).count(), 1)
+
+    def test_page_add_uses_the_last_pages_paper(self):
+        self.client.force_login(self.owner)
+        last = Page.objects.create(chapter=self.chapter, position=3, paper_template="weekly")
+        url = reverse("notes:page_add", args=[self.chapter.id])
+        self.assertEqual(self.client.post(url).status_code, 302)
+        added = self.chapter.pages.last()
+        self.assertEqual(added.position, last.position + 1)
+        self.assertEqual(added.paper_template, "weekly")
+
+    def test_page_add_copies_custom_paper_without_copying_notes(self):
+        self.client.force_login(self.owner)
+        png = sample_png()
+        self.page.paper_template = "custom"
+        self.page.paper_image = png
+        self.page.recognized_text = "기존 필기"
+        self.page.save(update_fields=["paper_template", "paper_image", "recognized_text"])
+        response = self.client.post(reverse("notes:page_add", args=[self.chapter.id]))
+        added = self.chapter.pages.last()
+        self.assertRedirects(response, reverse("notes:page_editor", args=[self.notebook.id, added.id]))
+        self.assertEqual(added.paper_template, "custom")
+        self.assertEqual(added.paper_image, png)
+        self.assertEqual(added.recognized_text, "")
+
+    def test_page_add_uses_default_paper_when_the_chapter_is_empty(self):
+        self.client.force_login(self.owner)
+        empty = Chapter.objects.create(notebook=self.notebook, title="빈 챕터")
+        self.assertEqual(self.client.post(reverse("notes:page_add", args=[empty.id])).status_code, 302)
+        first = empty.pages.get()
+        self.assertEqual((first.position, first.paper_template), (0, "lined"))
+
+    def test_cover_picker_keeps_existing_upload_and_requires_ownership(self):
+        self.notebook.cover_upload = "notebook-covers/existing.png"
+        self.notebook.save(update_fields=["cover_upload"])
+        url = reverse("notes:notebook_cover", args=[self.notebook.id])
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.post(url, {"cover_style": "linen"}).status_code, 404)
+        self.client.force_login(self.owner)
+        self.assertContains(self.client.get(url), 'class="template-sheet cover-swatch cover-linen"')
+        self.assertRedirects(self.client.post(url, {"cover_style": "linen"}), reverse("notes:library"))
+        self.notebook.refresh_from_db()
+        self.assertEqual(self.notebook.cover_style, "linen")
+        self.assertEqual(self.notebook.cover_upload.name, "notebook-covers/existing.png")
+
+    def test_uploaded_cover_requires_the_notebook_owner(self):
+        self.client.force_login(self.owner)
+        png = sample_png()
+        with TemporaryDirectory() as media_root, self.settings(MEDIA_ROOT=media_root):
+            edit = reverse("notes:notebook_cover", args=[self.notebook.id])
+            bogus = SimpleUploadedFile("not-png.png", b"plain text", "image/png")
+            self.assertContains(self.client.post(edit, {"cover_style": "blue", "cover_upload": bogus}), "PNG 이미지를 올려")
+            upload = SimpleUploadedFile("cover.png", png, "image/png")
+            self.assertRedirects(self.client.post(edit, {"cover_style": "blue", "cover_upload": upload}), reverse("notes:library"))
+            self.notebook.refresh_from_db()
+            url = self.notebook.cover_upload.url
+            image = self.client.get(url)
+            self.assertEqual(image.headers["Content-Type"], "image/png")
+            self.assertEqual(b"".join(image.streaming_content), png)
+            self.assertIn("no-store", image.headers["Cache-Control"])
+            self.client.force_login(self.other)
+            self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_custom_paper_is_private_and_available_when_switching_templates(self):
+        url = reverse("notes:page_paper", args=[self.page.id])
+        self.client.force_login(self.owner)
+        png = sample_png()
+        self.assertEqual(self.client.post(url, {"paper_image": SimpleUploadedFile("test.png", png, "image/png")}).status_code, 302)
+        self.assertEqual(self.client.get(url).content, png)
+        self.page.refresh_from_db()
+        self.assertEqual(self.page.paper_template, "custom")
+        editor = self.client.get(reverse("notes:page_editor", args=[self.notebook.id, self.page.id]))
+        self.assertContains(editor, 'value="custom"')
+        save = reverse("notes:page_save", args=[self.page.id])
+        self.client.post(save, {"paper_template": "lined"}, content_type="application/json")
+        self.assertEqual(self.client.get(url).content, png)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    def test_individual_page_and_chapter_deletion_is_owner_only(self):
+        extra = Chapter.objects.create(notebook=self.notebook, title="추가")
+        Page.objects.create(chapter=extra, title="남은 페이지")
+        page_url = reverse("notes:page_delete", args=[self.page.id])
+        chapter_url = reverse("notes:chapter_delete", args=[self.chapter.id])
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.post(page_url).status_code, 404)
+        self.assertEqual(self.client.post(chapter_url).status_code, 404)
+        self.client.force_login(self.owner)
+        self.assertEqual(self.client.get(page_url).status_code, 405)
+        self.assertEqual(self.client.post(page_url).status_code, 302)
+        self.assertEqual(self.client.post(chapter_url).status_code, 302)
+        self.assertFalse(Page.objects.filter(pk=self.page.id).exists())
+        self.assertTrue(Page.objects.filter(chapter=extra).exists())
+
+    def test_search_matches_text_boxes_and_sticky_notes(self):
+        self.page.text_boxes = [{"text": "삼각형의 합동"}]
+        self.page.sticky_notes = [{"text": "수직이등분선"}]
+        self.page.save(update_fields=["text_boxes", "sticky_notes"])
+        self.client.force_login(self.owner)
+        for query in ("합동", "수직이등분선"):
+            self.assertContains(self.client.get(reverse("notes:library"), {"q": query}), self.notebook.title)
+
+    def test_study_works_with_ink_markings_without_recognized_text_and_records_score_once(self):
+        self.page.ink_data = [
+            {"id": "blank-1", "tool": "highlighter", "study_role": "blank", "points": [[.2, .2], [.5, .2]]},
+            {"id": "card-1", "tool": "pen", "study_role": "card", "points": [[.1, .3], [.4, .3]]},
+        ]
+        self.page.save(update_fields=["ink_data"])
+        self.client.force_login(self.owner)
+        study = reverse("notes:study", args=[self.notebook.id])
+        payload = self.client.get(study).context["study_payload"][0]
+        self.assertEqual(payload["blanks"][0]["id"], "blank-1")
+        self.assertEqual(payload["cards"][0]["id"], "card-1")
+        url = reverse("notes:study_result", args=[self.notebook.id])
+        result = {"id": str(uuid4()), "mode": "speed", "duration": 45, "results": [{"key": f"{self.page.id}:blank:blank-1", "correct": False}]}
+        for _ in range(2):
+            self.assertEqual(self.client.post(url, result, content_type="application/json").status_code, 200)
+        self.assertEqual(QuizAttempt.objects.count(), 1)
+        self.assertContains(self.client.get(study), "자주 틀린 문제")
+
+    def test_saved_organization_preserves_original_order(self):
+        other_page = Page.objects.create(chapter=self.chapter, title="두 번째", position=1)
+        self.client.force_login(self.owner)
+        url = reverse("notes:organize_save", args=[self.notebook.id])
+        payload = {"kind": "reorder", "unit": "page", "name": "시간순 보기", "items": [
+            {"id": "a", "page": other_page.id}, {"id": "b", "page": self.page.id},
+        ]}
+        result = self.client.post(url, payload, content_type="application/json").json()
+        self.assertTrue(result["ok"])
+        self.assertContains(self.client.get(result["url"]), "시간순 보기")
+        self.assertEqual([item["page"] for item in NotebookView.objects.get().items], [other_page.id, self.page.id])
+        self.assertEqual(list(self.chapter.pages.values_list("id", flat=True)), [self.page.id, other_page.id])
+        payload.update(kind="map", name="관계도", items=[{"id": "a", "page": self.page.id, "x": 30, "y": 40, "parent": None}])
+        self.assertTrue(self.client.post(url, payload, content_type="application/json").json()["ok"])
+        self.assertEqual(NotebookView.objects.get(kind="map").items[0]["x"], 30)
+
+    def test_handwriting_samples_store_features_scoped_to_account_and_can_reset(self):
+        from PIL import Image
+        from .handwriting import best_sample
+
+        self.client.force_login(self.owner)
+        url = reverse("notes:handwriting_settings")
+        image = sample_png()
+        encoded = base64.b64encode(image).decode()
+        response = self.client.post(url, {"glyph": "7", "image_data": f"data:image/png;base64,{encoded}"})
+        self.assertEqual(response.status_code, 200)
+        sample = HandwritingSample.objects.get(owner=self.owner)
+        self.assertEqual(len(sample.signature), 400)
+        self.assertEqual(best_sample(Image.open(io.BytesIO(image)), [("7", sample.signature)]), "7")
+        self.client.force_login(self.other)
+        self.client.post(url, {"action": "reset"})
+        self.assertEqual(HandwritingSample.objects.count(), 1)
+        self.client.force_login(self.owner)
+        self.client.post(url, {"action": "reset"})
+        self.assertFalse(HandwritingSample.objects.exists())
 
 
 class InviteSignupTests(TestCase):
@@ -262,6 +475,8 @@ class StudySessionTests(TestCase):
         self.assertNotContains(timer, "NOTPROVIDED")
         self.assertContains(timer, "과목 선택")
         self.assertContains(planner, "스터디 플래너")
+        self.assertContains(planner, f'data-user-id="{self.owner.pk}"')
+        self.assertIn("no-store", planner.headers["Cache-Control"])
 
     def test_timer_session_is_saved_for_logged_in_user(self):
         self.client.force_login(self.owner)

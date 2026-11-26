@@ -1,0 +1,19 @@
+<fieldset class="cover-fieldset">
+  <legend>{{ form.cover_style.label }}</legend>
+  {{ form.cover_style.errors }}
+  <div class="template-grid cover-template-grid">
+    {% for option in form.cover_style %}
+      <label class="cover-option" title="{{ option.choice_label }}">
+        <input class="sr-only" type="radio" name="{{ option.data.name }}" value="{{ option.data.value }}" required {% if option.data.selected %}checked{% endif %}>
+        <span class="template-tile"><span class="template-sheet cover-swatch cover-{{ option.data.value }}" aria-hidden="true"></span></span>
+        <span class="sr-only">{{ option.choice_label }}</span>
+      </label>
+    {% endfor %}
+  </div>
+</fieldset>
+<div class="cover-upload-field">
+  <label for="{{ form.cover_upload.id_for_label }}">{{ form.cover_upload.label }}</label>
+  <div>{{ form.cover_upload }}</div>
+  {{ form.cover_upload.errors }}
+  <small>PNG 파일 · 최대 5MB · 업로드한 이미지를 표지로 사용합니다.</small>
+</div>

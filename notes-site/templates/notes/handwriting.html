@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}내 손글씨 설정 · 삽구의 서당{% endblock %}
+{% block content %}
+<section class="library-shell handwriting-shell">
+  <header class="page-heading"><div><a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a><h1>내 손글씨 설정</h1><p>예시문을 고르거나 자주 틀리는 글자를 직접 써서 등록하세요.</p></div></header>
+  <section class="organize-panel sample-examples" aria-labelledby="sampleExamplesTitle">
+    <h2 id="sampleExamplesTitle">예시문으로 연습</h2>
+    <div class="sample-picker stack-form">
+      <label>항목 <select id="sampleCategory">
+        {% for group in handwriting_examples %}<option value="{{ forloop.counter0 }}">{{ group.label }}</option>{% endfor %}
+      </select></label>
+      <label>예시문 <select id="sampleExample" aria-describedby="sampleExampleText"></select></label>
+    </div>
+    <p id="sampleExampleText" class="sample-example-text"></p>
+    <button id="startExample" class="secondary-button" type="button">이 예시문 연습하기</button>
+  </section>
+  <form id="handwritingForm" method="post" class="stack-form organize-panel">
+    {% csrf_token %}
+    <p id="sampleProgress" class="sample-progress" role="status" hidden></p>
+    <div id="sampleShortcuts" class="mode-buttons" aria-label="글자 예시">
+      <button type="button" class="small-button" data-glyph="한">한글 · 한</button><button type="button" class="small-button" data-glyph="A">영어 · A</button><button type="button" class="small-button" data-glyph="7">숫자 · 7</button><button type="button" class="small-button" data-glyph="∑">수학 · ∑</button><button type="button" class="small-button" data-glyph="?">기호 · ?</button>
+    </div>
+    <label>연습할 글자 <input name="glyph" maxlength="2" required placeholder="예: 한"></label>
+    <canvas id="sampleCanvas" width="320" height="320" aria-label="연습할 글자를 손으로 쓰는 칸"></canvas>
+    <div class="mode-buttons">
+      <button id="clearSample" class="secondary-button" type="button">지우기</button>
+      <button id="saveSample" class="primary-button" type="submit">표본 저장</button>
+      <button id="skipSample" class="small-button" type="button" hidden>건너뛰기</button>
+      <button id="endExample" class="small-button" type="button" hidden>직접 입력하기</button>
+    </div>
+    <p id="sampleStatus" role="status">글자 모양의 특징만 저장해요.</p>
+  </form>
+  <section class="organize-panel saved-samples">
+    <h2>등록한 글자</h2>
+    <ul id="savedSamples">{% for sample in samples %}<li data-saved-glyph="{{ sample.glyph }}"><strong>{{ sample.glyph }}</strong>{% if sample.reviewed %} {{ sample.reviewed }}회 검토 중 {{ sample.correct }}회 일치{% endif %}</li>{% empty %}<li id="emptySamples">등록한 글자가 없어요.</li>{% endfor %}</ul>
+    <form id="resetSamples" method="post"{% if not samples %} hidden{% endif %}>{% csrf_token %}<input type="hidden" name="action" value="reset"><button type="submit" class="danger-link">손글씨 설정 초기화</button></form>
+  </section>
+  {{ handwriting_examples|json_script:"handwriting-examples" }}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'notes/handwriting.js' %}?v=20261126-1"></script>{% endblock %}

@@ -1,0 +1,10 @@
+.env
+.env.*
+.venv
+vendor
+db.sqlite3*
+media
+ocr-models
+staticfiles
+**/__pycache__
+**/*.pyc

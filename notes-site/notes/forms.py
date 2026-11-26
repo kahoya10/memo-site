@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import UploadedFile
 from django.db import transaction
 
 from .models import InviteCode, Notebook
@@ -44,18 +45,37 @@ class InviteSignupForm(UserCreationForm):
         return user
 
 
-class NotebookForm(forms.ModelForm):
+class NotebookCoverForm(forms.ModelForm):
     class Meta:
         model = Notebook
-        fields = ("title", "subject", "cover_style", "cover_upload")
+        fields = ("cover_style", "cover_upload")
         widgets = {
-            "title": forms.TextInput(attrs={"placeholder": "예: 시대의 흐름"}),
-            "subject": forms.TextInput(attrs={"placeholder": "예: 한국사"}),
+            "cover_style": forms.RadioSelect,
             "cover_upload": forms.ClearableFileInput(attrs={"accept": "image/png"}),
         }
 
     def clean_cover_upload(self):
         upload = self.cleaned_data.get("cover_upload")
-        if upload and upload.content_type not in {"image/png", "image/x-png"}:
-            raise forms.ValidationError("PNG 이미지 파일만 사용할 수 있습니다.")
+        if isinstance(upload, UploadedFile):
+            from PIL import Image
+
+            try:
+                with Image.open(upload) as image:
+                    if image.format != "PNG" or image.width * image.height > 16_000_000:
+                        raise ValueError
+                    image.verify()
+            except (OSError, ValueError, Image.DecompressionBombError) as error:
+                raise forms.ValidationError("1600만 픽셀 이하의 PNG 이미지를 올려 주세요.") from error
+            finally:
+                upload.seek(0)
         return upload
+
+
+class NotebookForm(NotebookCoverForm):
+    class Meta(NotebookCoverForm.Meta):
+        fields = ("title", "subject", *NotebookCoverForm.Meta.fields)
+        widgets = {
+            **NotebookCoverForm.Meta.widgets,
+            "title": forms.TextInput(attrs={"placeholder": "예: 시대의 흐름"}),
+            "subject": forms.TextInput(attrs={"placeholder": "예: 한국사"}),
+        }

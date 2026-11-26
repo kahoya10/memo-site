@@ -5,27 +5,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}삽구의 서당{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'notes/site.css' %}?v=20261027-9">
+  <link rel="stylesheet" href="{% static 'notes/site.css' %}?v=20261126-3">
   {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-  <header class="site-header">
-    <a class="brand" href="{% url 'notes:dashboard' %}" aria-label="삽구의 서당 시작 화면">
-      <span class="brand-mark" aria-hidden="true">ㅅ</span>
-      <span><strong>삽구의 서당</strong><small>나의 공부 마당</small></span>
-    </a>
-    {% if user.is_authenticated %}
-      <nav class="top-nav" aria-label="사용자 메뉴">
-        <span>{{ user.username }} 님</span>
-        {% if user.is_staff %}<a href="{% url 'admin:index' %}">관리</a>{% endif %}
-        <form action="{% url 'logout' %}" method="post">
-          {% csrf_token %}
-          <button class="link-button" type="submit">로그아웃</button>
-        </form>
-      </nav>
-    {% endif %}
-  </header>
-
   {% if messages %}
     <section class="messages" aria-label="알림" data-auto-dismiss="1500">
       {% for message in messages %}<p class="message {{ message.tags }}">{{ message }}</p>{% endfor %}
@@ -36,6 +19,14 @@
     {% block content %}{% endblock %}
   </main>
   <script>
+    function newRecordId() {
+      if (crypto.randomUUID) return crypto.randomUUID();
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 15) | 64;
+      bytes[8] = (bytes[8] & 63) | 128;
+      const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+      return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
+    }
     document.querySelectorAll('[data-auto-dismiss]').forEach(notification => {
       const delay = Number(notification.dataset.autoDismiss) || 1500;
       window.setTimeout(() => {

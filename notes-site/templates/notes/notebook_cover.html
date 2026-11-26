@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}표지 변경 · {{ notebook.title }}{% endblock %}
+{% block content %}
+<section class="library-shell cover-settings-shell">
+  <a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a>
+  <form method="post" enctype="multipart/form-data" class="stack-form cover-settings">
+    {% csrf_token %}
+    <div class="dialog-heading"><h1>표지 변경</h1><span class="muted">{{ notebook.title }}</span></div>
+    {% include "notes/cover_fields.html" %}
+    <button class="primary-button wide" type="submit">표지 저장</button>
+  </form>
+</section>
+{% endblock %}

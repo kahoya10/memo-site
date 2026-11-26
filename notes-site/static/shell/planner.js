@@ -8,8 +8,8 @@ const SUBJECTS = {
 };
 const SUBJECT_KEYS = Object.keys(SUBJECTS);
 const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
-const STORAGE_KEY = "steady-planner-rebuild-v1";
-const PLANNER_INK_STORAGE_KEY = "steady-planner-ink-v1";
+const STUDY_USER_ID = document.body.dataset.userId;
+const PLANNER_INK_STORAGE_KEY = `steady-planner-ink-v1:${STUDY_USER_ID}`;
 const DRAG_MINUTE_UNIT = 5;
 
 const PLANNER_INK_PALETTES = {
@@ -105,13 +105,15 @@ function emptyDay() {
 }
 function loadState() {
   const today = isoDate(new Date());
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    if (saved && ["month", "week", "day"].includes(saved.view) && saved.focusDate && saved.days) return saved;
-  } catch (error) {
-    // Start with a clean state when storage is unavailable.
+  const saved = plannerStorage.read();
+  const initial = saved && ["month", "week", "day"].includes(saved.view) && saved.focusDate && saved.days
+    ? saved : { view: "month", focusDate: today, days: {} };
+  const linkedDate = new URLSearchParams(window.location.search).get("date");
+  if (linkedDate && /^\d{4}-\d{2}-\d{2}$/.test(linkedDate) && isoDate(fromIso(linkedDate)) === linkedDate) {
+    initial.focusDate = linkedDate;
+    initial.view = "day";
   }
-  return { view: "month", focusDate: today, days: {} };
+  return initial;
 }
 
 const state = loadState();
@@ -121,7 +123,6 @@ if (!state.periodMemos || typeof state.periodMemos !== "object") state.periodMem
 let pendingTimeBlock = null;
 const STUDY_API_URL = document.body.dataset.studyApi || "";
 const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
-const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
 const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
 const PLANNER_STAMP_URL = document.body.dataset.stampUrl || "./도장.png";
 let timerBlocksByDate = {};
@@ -205,7 +206,7 @@ async function loadTimerBlocks() {
 }
 
 function saveState() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (error) { /* memory-only fallback */ }
+  plannerStorage.save(state);
 }
 function getDay(key) {
   if (!state.days[key] || typeof state.days[key] !== "object") state.days[key] = emptyDay();
@@ -550,6 +551,8 @@ function renderMonth() {
   const date = fromIso(state.focusDate);
   const first = new Date(date.getFullYear(), date.getMonth(), 1);
   const offset = (first.getDay() + 6) % 7;
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const cellCount = Math.max(35, Math.ceil((offset + daysInMonth) / 7) * 7);
   const card = document.createElement("section");
   card.className = "calendar-card";
   const weekdays = document.createElement("div");
@@ -558,7 +561,7 @@ function renderMonth() {
   card.append(weekdays);
   const grid = document.createElement("div");
   grid.className = "calendar-grid";
-  for (let index = 0; index < 35; index += 1) {
+  for (let index = 0; index < cellCount; index += 1) {
     const cellDate = addDays(first, index - offset);
     const key = isoDate(cellDate);
     const day = getDay(key);
@@ -1299,6 +1302,9 @@ els.feedbackInput.addEventListener("input", function() { getDay(state.focusDate)
 setupPlannerInkEditors();
 render();
 loadTimerBlocks();
+window.addEventListener("pageshow", function(event) {
+  if (event.persisted) window.location.reload();
+});
 
 let plannerResizeTimer = 0;
 window.addEventListener("resize", function() {

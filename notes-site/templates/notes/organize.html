@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ notebook.title }} · 정리{% endblock %}
+{% block content %}
+<section id="organizeApp" class="library-shell organize-shell" data-kind="{{ kind }}" data-view="{{ selected.id|default:'' }}" data-url="{% url 'notes:organize_save' notebook.id %}">
+  <header class="page-heading">
+    <div><a class="back-link" href="{% url 'notes:library' %}">← 공책 목록</a><h1>{{ notebook.title }} 정리</h1></div>
+    <a class="small-button" href="{% url 'notes:editor' notebook.id %}">필기로 돌아가기</a>
+  </header>
+  <nav class="mode-buttons" aria-label="정리 방식">
+    <a class="small-button {% if kind == 'reorder' %}primary{% endif %}" href="?mode=reorder" {% if kind == 'reorder' %}aria-current="page"{% endif %}>재배치</a>
+    <a class="small-button {% if kind == 'map' %}primary{% endif %}" href="?mode=map" {% if kind == 'map' %}aria-current="page"{% endif %}>마인드맵</a>
+  </nav>
+  <div class="organize-layout">
+    <aside class="organize-panel organize-source">
+      <label for="sourceSearch">필기 검색</label>
+      <input id="sourceSearch" type="search" placeholder="제목 또는 필기 내용">
+      <label for="sourceUnit">가져올 단위</label>
+      <select id="sourceUnit"><option value="page" {% if selected.unit != 'paragraph' %}selected{% endif %}>페이지</option><option value="paragraph" {% if selected.unit == 'paragraph' %}selected{% endif %}>문단</option></select>
+      <ul id="sourceResults" class="source-results"></ul>
+    </aside>
+    <article class="organize-panel organize-board">
+      <form id="organizeForm" class="organize-controls">
+        {% csrf_token %}
+        <label>저장한 {% if kind == 'map' %}마인드맵{% else %}보기{% endif %}
+          <select id="savedViews"><option value="?mode={{ kind }}">새로 만들기</option>{% for view in saved_views %}<option value="?mode={{ kind }}&amp;view={{ view.id }}" {% if selected.id == view.id %}selected{% endif %}>{{ view.name }} · {{ view.updated_at|date:"m.d H:i" }}</option>{% endfor %}</select>
+        </label>
+        <label>이름 <input id="viewName" value="{{ selected.name }}" placeholder="{% if kind == 'map' %}마인드맵 이름{% else %}예: 시간순 보기{% endif %}" maxlength="80" required></label>
+        <button type="submit" class="primary-button">저장</button>
+      </form>
+      <p id="organizeStatus" role="status"></p>
+      {% if kind == 'map' %}
+        <div id="mapBoard" class="map-board"><canvas aria-hidden="true"></canvas><strong id="mapRoot">{{ notebook.title }}</strong><div id="mapNodes"></div></div>
+        <div id="mapDetail" class="map-detail" hidden></div>
+      {% else %}
+        <ol id="orderedNotes" class="ordered-notes"></ol>
+      {% endif %}
+      <p id="organizeEmpty" class="organize-empty">{{ notebook.title }}</p>
+    </article>
+  </div>
+  {{ source|json_script:"organize-source" }}
+  {{ items|json_script:"organize-items" }}
+</section>
+{% endblock %}
+{% block scripts %}<script src="{% static 'notes/page-ink.js' %}"></script><script src="{% static 'notes/organize.js' %}?v=20261125-1"></script>{% endblock %}

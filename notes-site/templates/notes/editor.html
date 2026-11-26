@@ -11,7 +11,7 @@
   data-next-page-url="{% if next_page %}{% url 'notes:page_editor' notebook.id next_page.id %}{% endif %}"
   data-current-page-id="{{ current_page.id }}"
   data-readonly="{% if notebook.owner_id == user.id %}false{% else %}true{% endif %}">
-  <aside class="page-drawer" aria-label="공책 목차">
+  <aside id="pageDrawer" class="page-drawer" aria-label="공책 목차">
     <div class="drawer-head">
       <a href="{% url 'notes:library' %}" class="back-link">← 공책 목록</a>
       {% if notebook.owner_id == user.id %}
@@ -37,13 +37,17 @@
           <div id="chapter-pages-{{ chapter.id }}" class="chapter-pages" hidden>
             {% for page in chapter.pages.all %}
               <a class="page-link page-preview-link {% if page.id == current_page.id %}active{% endif %}" href="{% url 'notes:page_editor' notebook.id page.id %}" aria-label="{{ page.title }}" title="{{ page.title }}">
-                <canvas class="page-thumbnail" data-page-preview-id="{{ page.id }}" width="112" height="158"></canvas><span class="sr-only">{{ page.title }}</span>
+                <canvas class="page-thumbnail paper-{{ page.paper_template }}" data-page-preview-id="{{ page.id }}" width="112" height="158" {% if page.paper_template == 'custom' %}style="--paper-image:url('{% url 'notes:page_paper' page.id %}')"{% endif %}></canvas><span class="sr-only">{{ page.title }}</span>
               </a>
+              {% if notebook.owner_id == user.id and page.id == current_page.id %}
+                <form class="page-delete-form" method="post" action="{% url 'notes:page_delete' page.id %}">{% csrf_token %}<button class="danger-link" type="submit">이 페이지 삭제</button></form>
+              {% endif %}
             {% endfor %}
             {% if notebook.owner_id == user.id %}
               <div class="chapter-actions">
-                <form action="{% url 'notes:page_add' chapter.id %}" method="post">{% csrf_token %}<button class="add-page" type="submit">+ 페이지</button></form>
+                <form action="{% url 'notes:page_add' chapter.id %}" method="post" data-add-page>{% csrf_token %}<button class="add-page" type="submit">+ 페이지</button></form>
                 <details class="inline-chapter-add"><summary>+ 챕터</summary><form action="{% url 'notes:chapter_add' notebook.id %}" method="post">{% csrf_token %}<input type="hidden" name="after_chapter_id" value="{{ chapter.id }}"><input name="title" maxlength="80" placeholder="새 챕터 이름"><button type="submit">추가</button></form></details>
+                <form class="chapter-delete-form" method="post" action="{% url 'notes:chapter_delete' chapter.id %}">{% csrf_token %}<input type="hidden" name="page_id" value="{{ current_page.id }}"><button class="danger-link" type="submit">챕터 삭제</button></form>
               </div>
             {% endif %}
           </div>
@@ -54,11 +58,18 @@
 
   <div class="editor-workspace">
     <div class="editor-titlebar">
+      <button id="togglePageDrawer" class="tool" type="button" aria-controls="pageDrawer" aria-expanded="true">목차</button>
       <input id="pageTitle" value="{{ current_page.title }}" maxlength="100" aria-label="페이지 제목" {% if notebook.owner_id != user.id %}readonly{% endif %}>
       <span id="saveStatus" class="save-status">저장됨</span>
+      {% if notebook.owner_id == user.id %}
+        <button id="openPaperTemplates" class="tool paper-template-trigger" type="button" aria-haspopup="dialog" title="현재 속지: {{ current_page.get_paper_template_display }}">
+          <span id="currentPaperSwatch" class="template-sheet paper-{{ current_page.paper_template }}" style="--paper-image:url('{% url 'notes:page_paper' current_page.id %}')" aria-hidden="true"></span>속지
+        </button>
+      {% endif %}
       <a class="small-button" href="{% url 'notes:study' notebook.id %}">학습하기</a>
     </div>
     <div class="tool-row" role="toolbar" aria-label="필기 도구">
+      <button id="recognizeButton" class="tool accent" type="button">손글씨 자동 인식</button>
       <div class="tool-family"><span class="tool-family-label">일반펜</span><div id="generalTools" class="tool-buttons"></div><button id="addToolButton" class="tool add-tool" type="button" aria-label="필기도구 추가">＋</button></div>
       <div class="tool-divider" aria-hidden="true"></div>
       <div class="tool-family"><span class="tool-family-label">학습펜</span><div id="studyTools" class="tool-buttons"></div></div>
@@ -69,19 +80,49 @@
       <button id="memoButton" class="tool" type="button" data-special-tool="memo">메모지</button>
       <button id="undoButton" class="tool icon-tool" type="button" title="실행 취소 (Ctrl+Z)">↶</button>
       <button id="redoButton" class="tool icon-tool" type="button" title="다시 실행 (Ctrl+Y)">↷</button>
-      <div class="zoom-controls"><button id="zoomOutButton" class="tool icon-tool" type="button" aria-label="축소">−</button><span id="zoomLabel">100%</span><button id="zoomInButton" class="tool icon-tool" type="button" aria-label="확대">＋</button></div>
+      {% if notebook.owner_id == user.id %}<button id="fingerInkButton" class="tool" type="button" aria-pressed="false" title="켜면 손가락으로도 쓸 수 있어요">손가락 필기</button>{% endif %}
       <button id="palmButton" class="tool" type="button">손바닥 · 자동</button>
-      <select id="paperTemplate" aria-label="필기지 선택">
-        {% for value, label in current_page.PAPER_TEMPLATES %}<option value="{{ value }}" {% if current_page.paper_template == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
-      </select>
-      <button id="recognizeButton" class="tool accent" type="button">손글씨 자동 인식</button>
     </div>
 
-    <div id="paperViewport" class="paper-stage">
-      <div id="paperSizer" class="paper-sizer"><div id="paper" class="note-paper paper-{{ current_page.paper_template }}"><canvas id="inkCanvas" aria-label="손글씨 필기 영역"></canvas><div id="objectLayer" class="object-layer" aria-label="텍스트와 메모지 영역"></div></div></div>
-      <div id="selectionActions" class="selection-actions" hidden><span>선택 영역을 끌어 이동</span><button id="copySelection" type="button">복사</button><button id="deleteSelection" type="button">삭제</button><button id="clearSelection" type="button">해제</button></div>
+    <div class="view-toolbar" role="toolbar" aria-label="화면과 페이지 이동">
+      <div class="view-controls">
+        <button id="panButton" class="tool" type="button" aria-pressed="false" title="끌어서 화면 이동 · Space를 누른 채 끌기">화면 이동</button>
+        <div class="zoom-controls">
+          <button id="zoomOutButton" class="tool icon-tool" type="button" aria-label="축소">−</button>
+          <button id="zoomLabel" class="tool zoom-value" type="button" aria-label="너비 맞춤 · 현재 100%" title="너비 맞춤">100%</button>
+          <button id="zoomInButton" class="tool icon-tool" type="button" aria-label="확대">＋</button>
+        </div>
+        <button id="fitPageButton" class="tool" type="button" aria-pressed="false">한 페이지</button>
+      </div>
+      <div class="page-navigation">
+        <button id="previousPageButton" class="tool" type="button" aria-label="이전 페이지" title="이전 페이지"{% if not previous_page %} disabled{% endif %}>‹ <span>이전</span></button>
+        <button id="nextPageButton" class="tool" type="button" aria-label="다음 페이지" title="다음 페이지"{% if not next_page %} disabled{% endif %}><span>다음</span> ›</button>
+      </div>
+    </div>
+
+    <div id="paperViewport" class="paper-stage" tabindex="0" role="region" aria-label="필기 화면">
+      <div id="paperSizer" class="paper-sizer"><div id="paper" class="note-paper paper-{{ current_page.paper_template }}" data-template="{{ current_page.paper_template }}" style="--paper-image:url('{% url 'notes:page_paper' current_page.id %}')"><canvas id="inkCanvas" aria-label="손글씨 필기 영역"></canvas><div id="objectLayer" class="object-layer" aria-label="텍스트와 메모지 영역"></div></div></div>
+      <div id="selectionActions" class="selection-actions" hidden><span>선택 영역을 끌어 이동</span><button id="convertSelection" type="button">텍스트로 변환</button><button id="copySelection" type="button">복사</button><button id="deleteSelection" type="button">삭제</button><button id="clearSelection" type="button">해제</button></div>
     </div>
   </div>
+
+  {% if notebook.owner_id == user.id %}
+    <dialog id="paperTemplatesDialog" class="settings-dialog template-dialog" aria-labelledby="paperTemplatesTitle">
+      <form method="dialog" class="dialog-heading"><h2 id="paperTemplatesTitle">속지 선택</h2><button class="icon-button" aria-label="닫기">×</button></form>
+      <div class="template-grid paper-template-grid">
+        {% for value, label in current_page.PAPER_TEMPLATES %}
+          {% if value != 'custom' or has_custom_paper %}
+          <button class="template-tile" type="button" value="{{ value }}" title="{{ label }}" aria-label="{{ label }}" aria-pressed="{% if current_page.paper_template == value %}true{% else %}false{% endif %}">
+            <span class="template-sheet paper-{{ value }}" {% if value == 'custom' %}style="--paper-image:url('{% url 'notes:page_paper' current_page.id %}')"{% endif %} aria-hidden="true"></span>
+          </button>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <form id="uploadPaper" class="upload-paper" action="{% url 'notes:page_paper' current_page.id %}" method="post" enctype="multipart/form-data">
+        {% csrf_token %}<label>PNG 속지 <input name="paper_image" type="file" accept="image/png" required></label><button class="secondary-button" type="submit">적용</button>
+      </form>
+    </dialog>
+  {% endif %}
 
   <dialog id="toolSettingsDialog" class="settings-dialog">
     <form method="dialog" class="dialog-heading"><div><p class="eyebrow">필기도구 설정</p><h2 id="settingsToolName">도구 설정</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
@@ -123,9 +164,13 @@
   <dialog id="recognitionDialog" class="recognition-dialog">
     <form method="dialog" class="dialog-heading"><div><p class="eyebrow">손글씨 인식 검토</p><h2>검색·학습용 텍스트 확인</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
     <p id="recognitionNotice" class="recognition-notice"><strong>서버 내부 손글씨 인식:</strong> 필기 이미지는 외부 AI 서비스로 전송되지 않습니다. 결과를 확인하고 필요한 부분을 고친 뒤 저장해 주세요.</p>
-    <div class="recognition-grid"><section><h3>내 필기 원본</h3><div id="inkPreview" class="ink-preview"></div></section><section><h3>인식된 내용</h3><textarea id="recognizedText" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></section></div>
+    <div class="recognition-grid">
+      <section><h3>내 필기 원본</h3><div id="inkPreview" class="ink-preview"></div></section>
+      <section><h3>인식 위치</h3><div id="recognitionPositions" class="ink-preview recognition-positions"></div></section>
+    </div>
+    <label class="terms-field">인식된 내용 <textarea id="recognizedText" rows="5" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></label>
     <label class="terms-field">빈칸으로 만들 핵심어 <textarea id="quizTerms" rows="3" placeholder="예: 세종대왕, 훈민정음">{% for term in current_page.quiz_terms %}{{ term }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea></label>
-    <div class="dialog-actions"><button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
+    <div class="dialog-actions"><button id="rerunRecognition" class="secondary-button" type="button">다시 인식</button><button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
   </dialog>
 
   {% csrf_token %}
@@ -134,6 +179,8 @@
   {{ page_previews|json_script:"page-previews" }}
   {{ current_page.text_boxes|json_script:"initial-text-boxes" }}
   {{ current_page.sticky_notes|json_script:"initial-sticky-notes" }}
+  {{ current_page.recognition_blocks|json_script:"recognition-blocks" }}
+  {{ current_page.uncertain_ranges|json_script:"recognition-uncertain" }}
 </section>
 {% endblock %}
-{% block scripts %}<script src="{% static 'notes/editor.js' %}?v=20261123-2"></script>{% endblock %}
+{% block scripts %}<script src="{% static 'notes/page-ink.js' %}"></script><script src="{% static 'notes/editor.js' %}?v=20261126-4"></script>{% endblock %}

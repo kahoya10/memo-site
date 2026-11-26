@@ -1,5 +1,6 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from notes.models import Chapter, InviteCode, Notebook, Page
@@ -10,6 +11,8 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError("Demo data is only available in local debug mode.")
         User = get_user_model()
         user, created = User.objects.get_or_create(username="demo")
         if created:

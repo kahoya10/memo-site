@@ -6,7 +6,13 @@
   const paper = document.getElementById("paper");
   const paperSizer = document.getElementById("paperSizer");
   const viewport = document.getElementById("paperViewport");
+  const panButton = document.getElementById("panButton");
+  const fitPageButton = document.getElementById("fitPageButton");
+  const zoomLabel = document.getElementById("zoomLabel");
+  const readOnly = app.dataset.readonly === "true";
   const context = canvas.getContext("2d");
+  const graphitePatterns = new Map();
+  let graphiteGrain;
   const csrf = app.querySelector("input[name=csrfmiddlewaretoken]").value;
   const clone = value => JSON.parse(JSON.stringify(value));
   const initial = JSON.parse(document.getElementById("initial-ink").textContent || "[]");
@@ -38,22 +44,49 @@
   let redoStack = [];
   let saveTimer = null;
   let preferenceTimer = null;
-  let saving = false;
-  let saveQueued = false;
+  let pendingSave = Promise.resolve(true);
   let zoom = 1;
   let basePaperWidth = 794;
+  let viewFit = "width";
+  let resizeFrame = 0;
+  let canvasSized = false;
+  let panMode = false;
+  let fingerInkEnabled = false;
   let spacePressed = false;
-  let mousePan = null;
+  let pointerPan = null;
   let hasDetectedPen = false;
   const touchPointers = new Map();
   let touchGesture = null;
-  let touchTap = null;
-  let pageSwipe = null;
-  let marginSwipe = null;
+  let touchSession = null;
   let navigatingPage = false;
   let selection = null;
   let selectionMove = null;
   let objectDrag = null;
+  const drawer = document.getElementById("pageDrawer");
+  const drawerButton = document.getElementById("togglePageDrawer");
+  const narrowScreen = matchMedia("(max-width: 800px)");
+  function setDrawer(open) {
+    app.classList.toggle("drawer-open", open);
+    drawer.inert = !open;
+    drawerButton.setAttribute("aria-expanded", String(open));
+  }
+  setDrawer(!narrowScreen.matches);
+  narrowScreen.addEventListener("change", () => setDrawer(!narrowScreen.matches));
+  drawerButton.addEventListener("click", () => setDrawer(drawer.inert));
+  drawer.addEventListener("keydown", event => {
+    if (event.key === "Escape") { setDrawer(false); drawerButton.focus(); }
+  });
+  const activeChapter = document.querySelector(".page-link.active")?.closest(".chapter-group");
+  if (activeChapter) {
+    activeChapter.querySelector(".chapter-pages").hidden = false;
+    const toggle = activeChapter.querySelector(".chapter-toggle");
+    toggle.setAttribute("aria-expanded", "true");
+    toggle.querySelector("b").textContent = "−";
+  }
+  document.querySelectorAll(".chapter-delete-form, .page-delete-form").forEach(form => form.addEventListener("submit", event => {
+    const description = form.classList.contains("chapter-delete-form") ? "이 챕터와 모든 페이지" : "이 페이지";
+    if (!window.confirm(`${description}를 삭제할까요?`)) event.preventDefault();
+  }));
 
   const toolSettingsDialog = document.getElementById("toolSettingsDialog");
   const eraserDialog = document.getElementById("eraserDialog");
@@ -71,12 +104,55 @@
   function beginHistory() { undoStack.push(snapshot()); if (undoStack.length > 80) undoStack.shift(); redoStack = []; }
 
   function resizeCanvas() {
-    const ratio = window.devicePixelRatio || 1;
     const rect = paper.getBoundingClientRect();
+    const ratio = Math.min(window.devicePixelRatio || 1, 4096 / Math.max(1, rect.width, rect.height));
     canvas.width = Math.max(1, Math.round(rect.width * ratio));
     canvas.height = Math.max(1, Math.round(rect.height * ratio));
     context.setTransform(ratio, 0, 0, ratio, 0, 0);
     redraw();
+  }
+
+  function createGraphiteGrain() {
+    const tile = document.createElement("canvas");
+    tile.width = tile.height = 96;
+    const tileContext = tile.getContext("2d");
+    const grain = tileContext.createImageData(tile.width, tile.height);
+    // Use the same paper grain every time the canvas is redrawn.
+    let seed = 73519;
+    const sample = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const coarseGrain = Array.from({length: tile.width * tile.height / 4}, sample);
+    for (let y = 0; y < tile.height; y++) {
+      for (let x = 0; x < tile.width; x++) {
+        const tooth = coarseGrain[Math.floor(y / 2) * (tile.width / 2) + Math.floor(x / 2)];
+        const fleck = sample();
+        const coverage = tooth < .17 ? .16 + .5 * fleck : .48 + .32 * tooth + .2 * fleck;
+        grain.data[(y * tile.width + x) * 4 + 3] = Math.round(255 * coverage);
+      }
+    }
+    tileContext.putImageData(grain, 0, 0);
+    return tile;
+  }
+
+  function graphitePattern(color) {
+    if (graphitePatterns.has(color)) return graphitePatterns.get(color);
+    graphiteGrain ??= createGraphiteGrain();
+    const tile = document.createElement("canvas");
+    tile.width = graphiteGrain.width;
+    tile.height = graphiteGrain.height;
+    const tileContext = tile.getContext("2d");
+    tileContext.drawImage(graphiteGrain, 0, 0);
+    tileContext.globalCompositeOperation = "source-in";
+    tileContext.fillStyle = "#343A40";
+    tileContext.fillStyle = color;
+    tileContext.fillRect(0, 0, tile.width, tile.height);
+    const pattern = context.createPattern(tile, "repeat");
+    pattern.setTransform(new DOMMatrix().scale(.5));
+    if (graphitePatterns.size >= 32) graphitePatterns.delete(graphitePatterns.keys().next().value);
+    graphitePatterns.set(color, pattern);
+    return pattern;
   }
 
   function renderStroke(stroke) {
@@ -85,7 +161,8 @@
     context.lineCap = "round";
     context.lineJoin = "round";
     context.lineWidth = Number(stroke.width) || 2;
-    context.strokeStyle = stroke.color || "#343A40";
+    const color = stroke.color || "#343A40";
+    context.strokeStyle = stroke.tool === "pencil" ? graphitePattern(color) : color;
     const fallbackOpacity = stroke.tool === "highlighter" ? 0.32 : stroke.tool === "pencil" ? 0.72 : 1;
     context.globalAlpha = Number.isFinite(Number(stroke.opacity)) ? Number(stroke.opacity) : fallbackOpacity;
     context.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
@@ -116,6 +193,7 @@
   function updateSelectionUI() {
     const hasSelection = Boolean(selectionBounds());
     document.getElementById("selectionActions").hidden = !hasSelection;
+    document.getElementById("convertSelection").hidden = !selection?.strokeIds.length;
     renderPaperObjects();
   }
 
@@ -203,7 +281,9 @@
     previewContext.lineJoin = "round";
     previewContext.lineWidth = Math.max(.5, (Number(stroke.width) || 2) * previewCanvas.width / 794);
     previewContext.strokeStyle = stroke.color || "#343A40";
-    previewContext.globalAlpha = Number.isFinite(Number(stroke.opacity)) ? Number(stroke.opacity) : fallbackOpacity;
+    const opacity = Number.isFinite(Number(stroke.opacity)) ? Number(stroke.opacity) : fallbackOpacity;
+    // Individual grains are too small to resolve at thumbnail size.
+    previewContext.globalAlpha = stroke.tool === "pencil" ? opacity * .68 : opacity;
     previewContext.globalCompositeOperation = stroke.tool === "eraser" ? "destination-out" : "source-over";
     previewContext.beginPath();
     stroke.points.forEach((point, index) => {
@@ -211,6 +291,9 @@
       const y = point[1] * previewCanvas.height;
       if (index === 0) previewContext.moveTo(x, y); else previewContext.lineTo(x, y);
     });
+    if (stroke.tool === "pencil" && stroke.points.length === 1) {
+      previewContext.lineTo(stroke.points[0][0] * previewCanvas.width + .1, stroke.points[0][1] * previewCanvas.height + .1);
+    }
     previewContext.stroke();
     previewContext.restore();
   }
@@ -219,18 +302,6 @@
     if (!previewCanvas || !data) return;
     const previewContext = previewCanvas.getContext("2d");
     previewContext.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
-    previewContext.fillStyle = data.paper_template === "hanji" ? "#f8f1dc" : "#ffffff";
-    previewContext.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
-    previewContext.save();
-    previewContext.strokeStyle = "#dce4e8";
-    previewContext.lineWidth = .5;
-    if (data.paper_template === "lined") {
-      for (let y = 10; y < previewCanvas.height; y += 10) { previewContext.beginPath(); previewContext.moveTo(0, y); previewContext.lineTo(previewCanvas.width, y); previewContext.stroke(); }
-    } else if (data.paper_template === "grid") {
-      for (let y = 8; y < previewCanvas.height; y += 8) { previewContext.beginPath(); previewContext.moveTo(0, y); previewContext.lineTo(previewCanvas.width, y); previewContext.stroke(); }
-      for (let x = 8; x < previewCanvas.width; x += 8) { previewContext.beginPath(); previewContext.moveTo(x, 0); previewContext.lineTo(x, previewCanvas.height); previewContext.stroke(); }
-    }
-    previewContext.restore();
     (data.ink_data || []).forEach(stroke => drawPreviewStroke(previewContext, previewCanvas, stroke));
     (data.text_boxes || []).forEach(item => {
       previewContext.fillStyle = "#253346"; previewContext.font = "4px sans-serif";
@@ -254,7 +325,7 @@
     const currentId = app.dataset.currentPageId;
     const previewCanvas = document.querySelector(`[data-page-preview-id="${currentId}"]`);
     const data = pagePreviews.find(item => String(item.id) === currentId);
-    if (data) { data.ink_data = strokes; data.text_boxes = textBoxes; data.sticky_notes = stickyNotes; data.paper_template = document.getElementById("paperTemplate").value; }
+    if (data) { data.ink_data = strokes; data.text_boxes = textBoxes; data.sticky_notes = stickyNotes; }
     drawPageThumbnail(previewCanvas, data);
   }
 
@@ -270,7 +341,7 @@
       label.textContent = item.name;
       button.append(color, label);
       button.addEventListener("click", () => {
-        if (!activeSpecial && activeToolId === item.id && lastToolClickId === item.id) {
+        if (!panMode && !activeSpecial && activeToolId === item.id && lastToolClickId === item.id) {
           openToolSettings(item.id);
           return;
         }
@@ -278,8 +349,8 @@
         activeSpecial = null;
         selection = null;
         lastToolClickId = item.id;
-        syncToolSelection();
-        updateSpecialButtons();
+        setPanMode(false);
+        updateSelectionUI();
       });
       return button;
     };
@@ -292,14 +363,15 @@
 
   function syncToolSelection() {
     document.querySelectorAll("[data-tool-id]").forEach(button => {
-      button.classList.toggle("active", !activeSpecial && button.dataset.toolId === activeToolId);
-      button.setAttribute("aria-pressed", String(!activeSpecial && button.dataset.toolId === activeToolId));
+      const selected = !panMode && !activeSpecial && button.dataset.toolId === activeToolId;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-pressed", String(selected));
     });
   }
 
   function updateSpecialButtons() {
     ["eraser", "lasso", "text", "memo"].forEach(name => {
-      document.getElementById(`${name}Button`)?.classList.toggle("active", activeSpecial === name);
+      document.getElementById(`${name}Button`)?.classList.toggle("active", !panMode && activeSpecial === name);
     });
     const modeLabels = {stroke: "획", area: "영역", lasso: "올가미"};
     document.getElementById("eraserModeLabel").textContent = modeLabels[eraserMode];
@@ -379,25 +451,63 @@
     }
   }
 
-  function setZoom(nextZoom, clientX = viewport.clientWidth / 2, clientY = viewport.clientHeight / 2) {
-    const clamped = Math.max(.5, Math.min(3, nextZoom));
-    const ratio = clamped / zoom;
-    const beforeLeft = viewport.scrollLeft;
-    const beforeTop = viewport.scrollTop;
-    zoom = clamped;
-    paperSizer.style.width = `${Math.round(basePaperWidth * zoom)}px`;
-    paperSizer.style.height = `${Math.round(basePaperWidth * 297 / 210 * zoom)}px`;
-    document.getElementById("zoomLabel").textContent = `${Math.round(zoom * 100)}%`;
-    requestAnimationFrame(() => {
-      resizeCanvas();
-      viewport.scrollLeft = (beforeLeft + clientX) * ratio - clientX;
-      viewport.scrollTop = (beforeTop + clientY) * ratio - clientY;
-    });
+  function setZoom(nextZoom, anchor, destination = anchor) {
+    const before = paperSizer.getBoundingClientRect();
+    if (!anchor) {
+      const bounds = viewport.getBoundingClientRect();
+      anchor = destination = {x: bounds.left + viewport.clientWidth / 2, y: bounds.top + viewport.clientHeight / 2};
+    }
+    const minZoom = viewFit === "page" ? .05 : Math.min(.25, zoom);
+    zoom = Math.max(minZoom, Math.min(3, nextZoom));
+    const width = Math.round(basePaperWidth * zoom);
+    const height = Math.round(basePaperWidth * 297 / 210 * zoom);
+    paperSizer.style.width = `${width}px`;
+    paperSizer.style.height = `${height}px`;
+    const percentage = `${Math.round(zoom * 100)}%`;
+    zoomLabel.textContent = percentage;
+    zoomLabel.setAttribute("aria-label", `너비 맞춤 · 현재 ${percentage}`);
+    fitPageButton.setAttribute("aria-pressed", String(viewFit === "page"));
+    fitPageButton.classList.toggle("active", viewFit === "page");
+
+    const after = paperSizer.getBoundingClientRect();
+    if (before.width && before.height) {
+      viewport.scrollLeft += after.left + (anchor.x - before.left) * after.width / before.width - destination.x;
+      viewport.scrollTop += after.top + (anchor.y - before.top) * after.height / before.height - destination.y;
+    }
+    if (!resizeFrame && (!canvasSized || width !== before.width || height !== before.height)) {
+      resizeFrame = requestAnimationFrame(() => {
+        resizeFrame = 0;
+        resizeCanvas();
+        canvasSized = true;
+      });
+    }
   }
 
-  function shouldRejectTouchDrawing(event) {
-    if (event.pointerType !== "touch") return false;
-    return palmMode === "on" || (palmMode === "auto" && hasDetectedPen);
+  function resizePaper() {
+    const style = getComputedStyle(viewport);
+    basePaperWidth = Math.max(1, Math.min(794, viewport.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)));
+    const availableHeight = viewport.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom);
+    const fittedZoom = Math.min(1, availableHeight / (basePaperWidth * 297 / 210));
+    setZoom(viewFit === "page" ? fittedZoom : viewFit === "width" ? 1 : zoom);
+    if (viewFit === "page") viewport.scrollTo(0, 0);
+  }
+
+  function updatePanCursor() {
+    viewport.classList.toggle("is-pannable", panMode || spacePressed);
+    viewport.classList.toggle("is-panning", Boolean(pointerPan));
+  }
+
+  function setPanMode(enabled) {
+    panMode = enabled;
+    panButton.setAttribute("aria-pressed", String(enabled));
+    panButton.classList.toggle("active", enabled);
+    syncToolSelection();
+    updateSpecialButtons();
+    updatePanCursor();
+  }
+
+  function canDrawWithFinger() {
+    return fingerInkEnabled && (palmMode === "off" || (palmMode === "auto" && !hasDetectedPen));
   }
 
   function eraseStrokeAt(point) {
@@ -417,9 +527,7 @@
   }
 
   function startDrawing(event) {
-    if (app.dataset.readonly === "true" || shouldRejectTouchDrawing(event)) return;
     activePointerId = event.pointerId;
-    canvas.setPointerCapture(event.pointerId);
     const point = pointFromEvent(event);
     if (activeSpecial === "text" || activeSpecial === "memo") {
       beginHistory();
@@ -504,34 +612,46 @@
     if (changed) markChanged();
   }
 
-  function cancelStrokeForGesture() {
-    if (activePointerId === null) return;
-    const shouldDiscardHistory = Boolean(activeStroke || selectionMove || activeSpecial === "eraser");
-    if (activeStroke && strokes.at(-1) === activeStroke) strokes.pop();
-    if (shouldDiscardHistory && undoStack.length) undoStack.pop();
-    activeStroke = null; activePointerId = null; lassoPoints = []; selectionMove = null; eraseChanged = false; redraw();
+  function cancelTouchDrawing() {
+    const drawing = touchSession?.drawing;
+    if (!drawing) return;
+    const {previousUndo, previousRedo, previousSelection} = drawing;
+    const original = undoStack.at(-1);
+    activeStroke = null;
+    activePointerId = null;
+    lassoPoints = [];
+    selectionMove = null;
+    eraseChanged = false;
+    const beganHistory = redoStack !== previousRedo;
+    undoStack = previousUndo;
+    redoStack = previousRedo;
+    selection = previousSelection;
+    if (beganHistory) restoreSnapshot(original);
+    else redraw();
+    updateSelectionUI();
+    touchSession.drawing = null;
   }
 
-  async function goToAdjacentPage(direction) {
-    if (navigatingPage) return;
-    const url = direction === "next" ? app.dataset.nextPageUrl : app.dataset.previousPageUrl;
-    if (!url) {
-      document.getElementById("saveStatus").textContent = direction === "next" ? "마지막 페이지" : "첫 페이지";
-      return;
-    }
+  async function goToPage(url) {
+    if (!url || navigatingPage) return;
     navigatingPage = true;
-    clearTimeout(saveTimer);
-    await savePage();
-    window.location.href = url;
+    if (readOnly || await flushPage()) window.location.href = url;
+    else navigatingPage = false;
   }
 
-  function completeHorizontalSwipe(swipe) {
-    if (!swipe) return false;
-    const dx = swipe.lastX - swipe.startX;
-    const dy = swipe.lastY - swipe.startY;
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.35) return false;
-    goToAdjacentPage(dx < 0 ? "next" : "previous");
-    return true;
+  function startPan(event) {
+    pointerPan = {id: event.pointerId, x: event.clientX, y: event.clientY};
+    updatePanCursor();
+  }
+
+  function stopPan() {
+    pointerPan = null;
+    updatePanCursor();
+  }
+
+  function updateTouchGesture() {
+    const [a, b] = touchPointers.values();
+    touchGesture = b ? {distance: distance(a, b), center: midpoint(a, b), zoom} : null;
   }
 
   function undo() {
@@ -543,108 +663,127 @@
     undoStack.push(snapshot()); restoreSnapshot(redoStack.pop()); selection = null; updateSelectionUI(); markChanged();
   }
 
-  canvas.addEventListener("pointerdown", event => {
-    if (event.pointerType === "pen") { hasDetectedPen = true; updateSpecialButtons(); }
+  viewport.addEventListener("pointerdown", event => {
+    if (event.target.closest("button, textarea, .selection-actions")) return;
+    const onPaper = event.target === canvas;
     if (event.pointerType === "touch") {
+      if ((activePointerId !== null && !touchPointers.has(activePointerId)) ||
+          (pointerPan && !touchPointers.has(pointerPan.id))) return;
+      viewport.setPointerCapture(event.pointerId);
+      if (!touchPointers.size) {
+        const canEditPaper = onPaper && !panMode && !readOnly;
+        const tapToPlace = canEditPaper && ["text", "memo"].includes(activeSpecial);
+        touchSession = {
+          origin: event, started: performance.now(), max: 1, moved: false, tapToPlace, drawing: null,
+        };
+        if (!canEditPaper || tapToPlace || !canDrawWithFinger()) startPan(event);
+        else {
+          touchSession.drawing = {previousUndo: undoStack.slice(), previousRedo: redoStack, previousSelection: selection};
+          startDrawing(event);
+        }
+      }
       touchPointers.set(event.pointerId, event);
-      if (hasDetectedPen && palmMode !== "off" && touchPointers.size === 1) {
-        pageSwipe = {pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY};
+      touchSession.max = Math.max(touchSession.max, touchPointers.size);
+      if (touchPointers.size >= 2) {
+        cancelTouchDrawing();
+        stopPan();
+        updateTouchGesture();
       }
-      if (!touchTap) touchTap = {start: performance.now(), max: 0, moved: false};
-      touchTap.max = Math.max(touchTap.max, touchPointers.size);
-      if (touchPointers.size === 2) {
-        cancelStrokeForGesture();
-        pageSwipe = null;
-        const [a, b] = [...touchPointers.values()];
-        touchGesture = {distance: distance(a, b), zoom, center: midpoint(a, b), scrollLeft: viewport.scrollLeft, scrollTop: viewport.scrollTop};
-        return;
-      }
-      if (touchPointers.size > 1) return;
-    }
-    if (spacePressed && event.pointerType === "mouse") {
-      mousePan = {x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop};
-      canvas.setPointerCapture(event.pointerId); return;
-    }
-    startDrawing(event);
-  });
-
-  canvas.addEventListener("pointermove", event => {
-    if (mousePan) {
-      viewport.scrollLeft = mousePan.left - (event.clientX - mousePan.x);
-      viewport.scrollTop = mousePan.top - (event.clientY - mousePan.y);
       return;
     }
-    if (event.pointerType === "touch" && touchPointers.has(event.pointerId)) {
+
+    if (activePointerId !== null || (pointerPan && !touchPointers.has(pointerPan.id)) || touchPointers.size > 1) return;
+    if (event.pointerType === "pen" && !hasDetectedPen) {
+      hasDetectedPen = true;
+      updateSpecialButtons();
+    }
+    const middleButton = event.pointerType === "mouse" && event.button === 1;
+    const move = panMode || spacePressed || middleButton;
+    if (!(event.button === 0 || middleButton) || (!move && (!onPaper || readOnly))) return;
+    if (touchPointers.size) {
+      touchPointers.clear();
+      touchSession = null;
+      stopPan();
+    }
+    event.preventDefault();
+    viewport.focus({preventScroll: true});
+    viewport.setPointerCapture(event.pointerId);
+    if (move) startPan(event);
+    else startDrawing(event);
+  });
+
+  viewport.addEventListener("pointermove", event => {
+    if (touchPointers.has(event.pointerId)) {
       const previous = touchPointers.get(event.pointerId);
-      if (Math.hypot(event.clientX - previous.clientX, event.clientY - previous.clientY) > 8 && touchTap) touchTap.moved = true;
+      if ((touchSession.origin.pointerId === event.pointerId && distance(event, touchSession.origin) > 8) ||
+          distance(event, previous) > 8) touchSession.moved = true;
       touchPointers.set(event.pointerId, event);
-      if (pageSwipe?.pointerId === event.pointerId && touchPointers.size === 1) {
-        pageSwipe.lastX = event.clientX; pageSwipe.lastY = event.clientY;
-        if (Math.hypot(pageSwipe.lastX - pageSwipe.startX, pageSwipe.lastY - pageSwipe.startY) > 8 && touchTap) touchTap.moved = true;
-        return;
-      }
-      if (touchPointers.size >= 2 && touchGesture) {
-        const [a, b] = [...touchPointers.values()];
+      if (touchGesture) {
+        const [a, b] = touchPointers.values();
         const center = midpoint(a, b);
-        setZoom(touchGesture.zoom * distance(a, b) / Math.max(touchGesture.distance, 1), center.x - viewport.getBoundingClientRect().left, center.y - viewport.getBoundingClientRect().top);
-        viewport.scrollLeft -= center.x - touchGesture.center.x;
-        viewport.scrollTop -= center.y - touchGesture.center.y;
-        touchGesture.center = center;
-        touchTap.moved = true;
+        const nextDistance = distance(a, b);
+        const shift = Math.hypot(center.x - touchGesture.center.x, center.y - touchGesture.center.y);
+        if (touchSession.moved || shift > 5 || Math.abs(nextDistance - touchGesture.distance) > 8) {
+          touchSession.moved = true;
+          viewFit = null;
+          setZoom(touchGesture.zoom * nextDistance / Math.max(touchGesture.distance, 1), touchGesture.center, center);
+          touchGesture.center = center;
+        }
         return;
       }
+    }
+    if (pointerPan?.id === event.pointerId) {
+      if (touchSession?.tapToPlace && !touchSession.moved) return;
+      viewport.scrollLeft -= event.clientX - pointerPan.x;
+      viewport.scrollTop -= event.clientY - pointerPan.y;
+      pointerPan.x = event.clientX;
+      pointerPan.y = event.clientY;
+      return;
     }
     continueDrawing(event);
   });
 
   function finishPointer(event) {
-    if (mousePan) { mousePan = null; return; }
-    stopDrawing(event);
-    if (event.pointerType === "touch") {
-      const completedPageSwipe = pageSwipe?.pointerId === event.pointerId ? {...pageSwipe, lastX: event.clientX, lastY: event.clientY} : null;
-      touchPointers.delete(event.pointerId);
-      if (!touchPointers.size) {
-        if (touchTap && !touchTap.moved && performance.now() - touchTap.start < 350) {
-          if (touchTap.max === 2) undo();
-          if (touchTap.max >= 3) redo();
-        }
-        touchGesture = null; touchTap = null;
+    if (pointerPan?.id === event.pointerId) stopPan();
+    if (!touchPointers.delete(event.pointerId)) {
+      stopDrawing(event);
+      return;
+    }
+    const completed = event.type === "pointerup";
+    if (completed) stopDrawing(event);
+    else { touchSession.moved = true; cancelTouchDrawing(); }
+    if (touchPointers.size >= 2) updateTouchGesture();
+    else if (touchGesture) {
+      touchGesture = null;
+      if (touchPointers.size && touchSession.moved) startPan(touchPointers.values().next().value);
+    }
+    if (!touchPointers.size) {
+      const {started, max, moved, tapToPlace} = touchSession;
+      touchSession = null;
+      if (!completed) return;
+      if (max === 1) {
+        if (tapToPlace && !moved) startDrawing(event);
+      } else if (!moved && !readOnly && performance.now() - started < 350) {
+        if (max === 2) undo();
+        else redo();
       }
-      if (completedPageSwipe) completeHorizontalSwipe(completedPageSwipe);
-      if (pageSwipe?.pointerId === event.pointerId) pageSwipe = null;
     }
   }
-  canvas.addEventListener("pointerup", finishPointer);
-  canvas.addEventListener("pointercancel", finishPointer);
-
-  viewport.addEventListener("pointerdown", event => {
-    if (event.pointerType !== "touch" || event.target.closest("#paperSizer") || event.target.closest(".text-panel")) return;
-    marginSwipe = {pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, lastX: event.clientX, lastY: event.clientY};
-    viewport.setPointerCapture(event.pointerId);
-  });
-  viewport.addEventListener("pointermove", event => {
-    if (marginSwipe?.pointerId !== event.pointerId) return;
-    marginSwipe.lastX = event.clientX; marginSwipe.lastY = event.clientY;
-  });
-  const finishMarginSwipe = event => {
-    if (marginSwipe?.pointerId !== event.pointerId) return;
-    marginSwipe.lastX = event.clientX; marginSwipe.lastY = event.clientY;
-    completeHorizontalSwipe(marginSwipe); marginSwipe = null;
-  };
-  viewport.addEventListener("pointerup", finishMarginSwipe);
-  viewport.addEventListener("pointercancel", () => { marginSwipe = null; });
+  viewport.addEventListener("pointerup", finishPointer);
+  viewport.addEventListener("pointercancel", finishPointer);
+  viewport.addEventListener("lostpointercapture", finishPointer);
 
   document.getElementById("eraserButton").addEventListener("click", () => {
-    if (activeSpecial === "eraser") {
+    if (!panMode && activeSpecial === "eraser") {
       eraserDialog.querySelector(`[name=eraser_mode][value="${eraserMode}"]`).checked = true;
       eraserDialog.showModal();
-    } else { activeSpecial = "eraser"; selection = null; lastToolClickId = null; syncToolSelection(); updateSpecialButtons(); updateSelectionUI(); }
+    } else { activeSpecial = "eraser"; selection = null; lastToolClickId = null; setPanMode(false); updateSelectionUI(); }
   });
   ["lasso", "text", "memo"].forEach(name => {
     document.getElementById(`${name}Button`).addEventListener("click", () => {
       activeSpecial = name; lastToolClickId = null;
       if (name !== "lasso") selection = null;
-      syncToolSelection(); updateSpecialButtons(); updateSelectionUI(); redraw();
+      setPanMode(false); updateSelectionUI(); redraw();
     });
   });
   document.getElementById("copySelection").addEventListener("click", () => {
@@ -673,9 +812,38 @@
   });
   document.getElementById("undoButton").addEventListener("click", undo);
   document.getElementById("redoButton").addEventListener("click", redo);
-  document.getElementById("zoomOutButton").addEventListener("click", () => setZoom(zoom - .1));
-  document.getElementById("zoomInButton").addEventListener("click", () => setZoom(zoom + .1));
-  viewport.addEventListener("wheel", event => { if (event.target.closest(".text-panel")) return; event.preventDefault(); const rect = viewport.getBoundingClientRect(); setZoom(zoom * (event.deltaY < 0 ? 1.1 : .9), event.clientX - rect.left, event.clientY - rect.top); }, {passive: false});
+  panButton.addEventListener("click", () => setPanMode(!panMode));
+  const fingerInkButton = document.getElementById("fingerInkButton");
+  fingerInkButton?.addEventListener("click", () => {
+    fingerInkEnabled = !fingerInkEnabled;
+    if (fingerInkEnabled) setPanMode(false);
+    fingerInkButton.setAttribute("aria-pressed", String(fingerInkEnabled));
+    fingerInkButton.classList.toggle("active", fingerInkEnabled);
+  });
+  zoomLabel.addEventListener("click", () => { viewFit = "width"; resizePaper(); });
+  fitPageButton.addEventListener("click", () => { viewFit = viewFit === "page" ? "width" : "page"; resizePaper(); });
+  document.getElementById("zoomOutButton").addEventListener("click", () => { viewFit = null; setZoom(zoom / 1.2); });
+  document.getElementById("zoomInButton").addEventListener("click", () => { viewFit = null; setZoom(zoom * 1.2); });
+  viewport.addEventListener("wheel", event => {
+    if ((!event.ctrlKey && !event.metaKey) || !event.deltaY) return;
+    event.preventDefault();
+    const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+    viewFit = null;
+    setZoom(zoom * Math.exp(-delta * .002), {x: event.clientX, y: event.clientY});
+  }, {passive: false});
+
+  document.getElementById("previousPageButton").addEventListener("click", () => goToPage(app.dataset.previousPageUrl));
+  document.getElementById("nextPageButton").addEventListener("click", () => goToPage(app.dataset.nextPageUrl));
+  app.addEventListener("click", event => {
+    const control = event.target.closest(".view-controls button, .preset-tool, [data-special-tool]");
+    if (event.detail && control && document.activeElement === control) viewport.focus({preventScroll: true});
+  });
+  drawer.querySelectorAll("a.page-link").forEach(link => link.addEventListener("click", event => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (!link.classList.contains("active")) goToPage(link.href);
+    else if (narrowScreen.matches) { setDrawer(false); drawerButton.focus(); }
+  }));
 
   document.getElementById("palmButton").addEventListener("click", () => {
     palmMode = palmMode === "auto" ? "on" : palmMode === "on" ? "off" : "auto";
@@ -716,73 +884,280 @@
     newToolDialog.close(); renderTools(); queuePreferencesSave(); openToolSettings(item.id);
   });
 
-  document.getElementById("paperTemplate").addEventListener("change", event => { paper.className = `note-paper paper-${event.target.value}`; markChanged(); });
+  const paperTemplatesDialog = document.getElementById("paperTemplatesDialog");
+  if (paperTemplatesDialog) {
+    const trigger = document.getElementById("openPaperTemplates");
+    const swatch = document.getElementById("currentPaperSwatch");
+    const uploadForm = document.getElementById("uploadPaper");
+    const options = paperTemplatesDialog.querySelectorAll(".template-tile");
+    trigger.addEventListener("click", () => {
+      options.forEach(option => option.setAttribute("aria-pressed", String(option.value === paper.dataset.template)));
+      paperTemplatesDialog.showModal();
+      paperTemplatesDialog.querySelector('[aria-pressed="true"]')?.focus();
+    });
+    uploadForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = uploadForm.querySelector("button");
+      button.disabled = true;
+      const saved = await flushPage();
+      if (saved) uploadForm.submit();
+      else button.disabled = false;
+    });
+    options.forEach(option => option.addEventListener("click", () => {
+      paperTemplatesDialog.close();
+      if (option.value === paper.dataset.template) return;
+      const previousClass = `paper-${paper.dataset.template}`;
+      const nextClass = `paper-${option.value}`;
+      const thumbnail = document.querySelector(`[data-page-preview-id="${app.dataset.currentPageId}"]`);
+      if (thumbnail && option.value === "custom") thumbnail.style.setProperty("--paper-image", paper.style.getPropertyValue("--paper-image"));
+      [paper, swatch, thumbnail].forEach(element => element?.classList.replace(previousClass, nextClass));
+      paper.dataset.template = option.value;
+      trigger.title = `현재 속지: ${option.getAttribute("aria-label")}`;
+      markChanged();
+    }));
+  }
+  document.querySelectorAll("[data-add-page]").forEach(form => form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (navigatingPage) return;
+    navigatingPage = true;
+    const button = form.querySelector("button");
+    button.disabled = true;
+    if (await flushPage()) form.submit();
+    else {
+      button.disabled = false;
+      navigatingPage = false;
+    }
+  }));
   document.getElementById("pageTitle").addEventListener("input", markChanged);
 
   const recognitionDialog = document.getElementById("recognitionDialog");
   const recognizeButton = document.getElementById("recognizeButton");
+  recognizeButton.parentElement.prepend(recognizeButton);
   const recognitionNotice = document.getElementById("recognitionNotice");
+  const recognizedInput = document.getElementById("recognizedText");
+  const quizTermsInput = document.getElementById("quizTerms");
+  const inkPreview = document.getElementById("inkPreview");
+  const positions = document.getElementById("recognitionPositions");
+  const initialRecognitionNotice = recognitionNotice.innerHTML;
+  let savedRecognition = {
+    text: recognizedInput.value,
+    terms: quizTermsInput.value,
+    blocks: JSON.parse(document.getElementById("recognition-blocks").textContent),
+    uncertain: JSON.parse(document.getElementById("recognition-uncertain").textContent),
+  };
+  let recognitionDraft = null;
+  let recognitionRequest = null;
+  let savingRecognition = false;
+  function showRecognitionPositions() {
+    positions.replaceChildren();
+    inkPreview.replaceChildren();
+    const edited = recognizedInput.value.split("\n");
+    if (!recognitionDraft || edited.length !== recognitionDraft.blocks.length) return;
+    const uncertain = new Set(recognitionDraft.uncertain.map(bounds => bounds.join()));
+    recognitionDraft.blocks.forEach(({bounds}, index) => {
+      const [left, top, right, bottom] = bounds;
+      const area = document.createElement("span");
+      area.className = "ocr-area";
+      area.classList.toggle("uncertain", uncertain.has(bounds.join()));
+      area.style.cssText = `left:${left * 100}%;top:${top * 100}%;width:${(right-left) * 100}%;height:${(bottom-top) * 100}%`;
+      inkPreview.append(area);
+      const label = area.cloneNode();
+      label.textContent = edited[index];
+      label.title = edited[index];
+      positions.append(label);
+    });
+  }
+  recognizedInput.addEventListener("input", showRecognitionPositions);
+
+  async function requestRecognition(imageData, selection = false, signal) {
+    const response = await fetch(app.dataset.recognizeUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+      body: JSON.stringify({image_data: imageData, selection}),
+      signal,
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !result.ok) throw new Error(result.error || "손글씨 인식에 실패했어요.");
+    return result;
+  }
+
+  document.getElementById("convertSelection").addEventListener("click", async event => {
+    if (!selection?.strokeIds.length) return;
+    const button = event.currentTarget;
+    const {left, top, right, bottom} = selectionBounds();
+    const bounds = [Math.max(0, left - .02), Math.max(0, top - .02), Math.min(1, right + .02), Math.min(1, bottom + .02)];
+    const selectedInk = strokes.filter(stroke => selection.strokeIds.includes(stroke.id));
+    const crop = document.createElement("canvas");
+    drawPageInk(crop, selectedInk, bounds);
+    const ctx = crop.getContext("2d");
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, crop.width, crop.height);
+    button.disabled = true;
+    button.textContent = "인식 중…";
+    try {
+      const {recognized_text: text} = await requestRecognition(crop.toDataURL("image/png"), true);
+      const width = Math.min(.9, Math.max(.2, right - left));
+      const height = Math.min(.45, Math.max(.07, bottom - top, text.split("\n").length * .03));
+      beginHistory();
+      textBoxes.push({id: `text-${newRecordId()}`, text, x: Math.max(0, Math.min(left, 1 - width)), y: Math.max(0, Math.min(bottom + .018, 1 - height)), width, height});
+      selection = null;
+      activeSpecial = "text";
+      syncToolSelection();
+      updateSpecialButtons();
+      updateSelectionUI();
+      redraw();
+      markChanged();
+    } catch (error) {
+      document.getElementById("saveStatus").textContent = error.message;
+    } finally {
+      button.disabled = false;
+      button.textContent = "텍스트로 변환";
+    }
+  });
   function recognitionImageData() {
     const exportCanvas = document.createElement("canvas");
-    exportCanvas.width = canvas.width;
-    exportCanvas.height = canvas.height;
+    const scale = Math.min(1, 2100 / Math.max(canvas.width, canvas.height));
+    exportCanvas.width = Math.max(1, Math.round(canvas.width * scale));
+    exportCanvas.height = Math.max(1, Math.round(canvas.height * scale));
     const exportContext = exportCanvas.getContext("2d");
     exportContext.fillStyle = "#ffffff";
     exportContext.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-    exportContext.drawImage(canvas, 0, 0);
+    exportContext.drawImage(canvas, 0, 0, exportCanvas.width, exportCanvas.height);
     return exportCanvas.toDataURL("image/png");
   }
-  recognizeButton.addEventListener("click", async () => {
-    const imageData = recognitionImageData();
-    document.getElementById("inkPreview").style.backgroundImage = `url(${imageData})`;
-    recognitionDialog.showModal();
+  const rerunRecognition = document.getElementById("rerunRecognition");
+  const confirmRecognition = document.getElementById("confirmRecognition");
+  const recognitionCloseButtons = recognitionDialog.querySelectorAll('[value="cancel"], [data-close-recognition]');
+
+  function updateRecognitionControls() {
+    rerunRecognition.disabled = confirmRecognition.disabled = Boolean(recognitionRequest) || savingRecognition;
+    recognizedInput.disabled = quizTermsInput.disabled = savingRecognition;
+    recognitionCloseButtons.forEach(button => { button.disabled = savingRecognition; });
+  }
+
+  function discardRecognitionDraft() {
+    recognitionRequest?.abort();
+    recognitionRequest = null;
+    recognitionDraft = null;
+    recognizedInput.value = savedRecognition.text;
+    quizTermsInput.value = savedRecognition.terms;
+    updateRecognitionControls();
+  }
+
+  async function runRecognition(imageData) {
+    inkPreview.style.backgroundImage = `url(${imageData})`;
     if (!strokes.length) {
       recognitionNotice.innerHTML = "<strong>필기 없음:</strong> 먼저 종이에 손글씨를 작성해 주세요.";
       return;
     }
-    recognizeButton.disabled = true;
-    recognizeButton.textContent = "인식 중…";
+    const controller = new AbortController();
+    recognitionRequest = controller;
+    updateRecognitionControls();
     recognitionNotice.innerHTML = "<strong>서버에서 인식 중:</strong> 손글씨를 읽고 있어요. 첫 실행은 모델을 준비하느라 조금 더 걸릴 수 있어요.";
     try {
-      const response = await fetch(app.dataset.recognizeUrl, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
-        body: JSON.stringify({image_data: imageData}),
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.error || "손글씨 인식에 실패했어요.");
-      document.getElementById("recognizedText").value = result.recognized_text;
+      const result = await requestRecognition(imageData, false, controller.signal);
+      if (recognitionRequest !== controller || !recognitionDialog.open) return;
+      recognizedInput.value = result.recognized_text;
+      recognitionDraft = {
+        blocks: result.blocks,
+        uncertain: result.blocks.filter(block => block.confidence < .55).map(block => block.bounds),
+        token: result.recognition_token,
+      };
+      showRecognitionPositions();
       recognitionNotice.innerHTML = "<strong>로컬 인식 완료:</strong> 잘못 읽힌 부분이 없는지 확인하고 수정해 주세요.";
     } catch (error) {
-      recognitionNotice.innerHTML = `<strong>자동 인식 실패:</strong> ${String(error.message || error)}`;
+      if (recognitionRequest === controller && recognitionDialog.open) recognitionNotice.textContent = `자동 인식 실패: ${error.message}`;
     } finally {
-      recognizeButton.disabled = false;
-      recognizeButton.textContent = "손글씨 자동 인식";
+      if (recognitionRequest === controller) {
+        recognitionRequest = null;
+        updateRecognitionControls();
+      }
+    }
+  }
+  recognizeButton.addEventListener("click", () => {
+    discardRecognitionDraft();
+    recognitionDraft = {blocks: savedRecognition.blocks, uncertain: savedRecognition.uncertain};
+    recognitionNotice.innerHTML = initialRecognitionNotice;
+    const imageData = recognitionImageData();
+    inkPreview.style.backgroundImage = `url(${imageData})`;
+    showRecognitionPositions();
+    recognitionDialog.showModal();
+    if (!recognitionDraft.blocks.length && !savedRecognition.text) runRecognition(imageData);
+  });
+  rerunRecognition.addEventListener("click", () => runRecognition(recognitionImageData()));
+  document.querySelector("[data-close-recognition]").addEventListener("click", () => recognitionDialog.close());
+  recognitionDialog.addEventListener("cancel", event => { if (savingRecognition) event.preventDefault(); });
+  recognitionDialog.addEventListener("close", () => {
+    if (!recognitionDialog.open) discardRecognitionDraft();
+  });
+  confirmRecognition.addEventListener("click", async () => {
+    savingRecognition = true;
+    updateRecognitionControls();
+    const review = {
+      recognition_reviewed: true,
+      recognized_text: recognizedInput.value,
+      quiz_terms: quizTermsInput.value.split(/[,\n]/).map(value => value.trim()).filter(Boolean),
+      recognition_token: recognitionDraft.token,
+    };
+    const saved = await savePage(review);
+    savingRecognition = false;
+    updateRecognitionControls();
+    if (saved) {
+      savedRecognition = {text: saved.recognized_text, terms: saved.quiz_terms.join(", "), blocks: saved.blocks, uncertain: []};
+      recognitionDialog.close();
+    } else {
+      recognitionNotice.textContent = "인식 결과를 저장하지 못했어요. 다시 시도해 주세요.";
     }
   });
-  document.querySelector("[data-close-recognition]").addEventListener("click", () => recognitionDialog.close());
-  document.getElementById("confirmRecognition").addEventListener("click", async () => { await savePage(true); recognitionDialog.close(); });
 
-  function terms() { return document.getElementById("quizTerms").value.split(/[,\n]/).map(value => value.trim()).filter(Boolean); }
-  async function savePage(reviewed = false) {
-    if (saving) { saveQueued = true; return; }
-    saving = true; saveQueued = false;
+  function savePage(review = null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    pendingSave = pendingSave.then(() => persistPage(review));
+    return pendingSave;
+  }
+
+  async function flushPage() {
+    const saved = await (saveTimer ? savePage() : pendingSave);
+    return saved || savePage();
+  }
+
+  async function persistPage(review) {
     const status = document.getElementById("saveStatus"); status.textContent = "저장 중…";
     try {
-      const response = await fetch(app.dataset.saveUrl, {method: "POST", headers: {"Content-Type": "application/json", "X-CSRFToken": csrf}, body: JSON.stringify({title: document.getElementById("pageTitle").value, ink_data: strokes, text_boxes: textBoxes, sticky_notes: stickyNotes, text_content: "", recognized_text: document.getElementById("recognizedText").value, quiz_terms: terms(), paper_template: document.getElementById("paperTemplate").value, recognition_reviewed: reviewed})});
+      const response = await fetch(app.dataset.saveUrl, {
+        method: "POST",
+        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+        body: JSON.stringify({
+          title: document.getElementById("pageTitle").value,
+          ink_data: strokes, text_boxes: textBoxes, sticky_notes: stickyNotes, text_content: "",
+          paper_template: paper.dataset.template,
+          ...review,
+        }),
+      });
       if (!response.ok) throw new Error("save failed");
+      const saved = await response.json();
       status.textContent = "저장됨";
-    } catch (error) { status.textContent = "저장 실패 · 다시 시도"; }
-    finally { saving = false; if (saveQueued) savePage(); }
+      return saved;
+    } catch (error) {
+      status.textContent = "저장 실패 · 다시 시도";
+      return false;
+    }
   }
 
   window.addEventListener("keydown", event => {
-    if (event.code === "Space" && !event.target.matches("input,textarea,select")) { spacePressed = true; canvas.classList.add("is-pannable"); event.preventDefault(); }
+    if (event.code === "Space" && !event.target.matches("input,textarea,select,button,a,summary,[contenteditable]") && !event.target.closest("dialog")) {
+      spacePressed = true;
+      updatePanCursor();
+      event.preventDefault();
+    }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") { event.preventDefault(); event.shiftKey ? redo() : undo(); }
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") { event.preventDefault(); redo(); }
   });
-  window.addEventListener("keyup", event => { if (event.code === "Space") { spacePressed = false; mousePan = null; canvas.classList.remove("is-pannable"); } });
-  window.addEventListener("resize", () => { if (zoom === 1) { basePaperWidth = Math.min(794, Math.max(320, viewport.clientWidth - 52)); setZoom(1); } else resizeCanvas(); });
+  window.addEventListener("keyup", event => { if (event.code === "Space") { spacePressed = false; updatePanCursor(); } });
+  window.addEventListener("blur", () => { spacePressed = false; updatePanCursor(); });
   window.addEventListener("beforeunload", () => { if (saveTimer) savePage(); if (preferenceTimer) savePreferences(); });
 
   document.querySelectorAll(".chapter-toggle").forEach(button => {
@@ -811,6 +1186,6 @@
     form.addEventListener("keydown", event => { if (event.key === "Escape") { event.preventDefault(); closeEditor(); } });
   });
 
-  basePaperWidth = Math.min(794, Math.max(320, viewport.clientWidth - 52));
-  renderTools(); updateSpecialButtons(); renderPageThumbnails(); setZoom(1);
+  renderTools(); updateSpecialButtons(); renderPageThumbnails(); resizePaper();
+  new ResizeObserver(resizePaper).observe(viewport, {box: "border-box"});
 })();
