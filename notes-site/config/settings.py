@@ -31,6 +31,9 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
+if os.environ.get("RENDER") == "true" and render_hostname:
+    ALLOWED_HOSTS.append(render_hostname)
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
@@ -160,5 +163,7 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 LOCAL_OCR_MODEL_DIR = Path(os.environ.get("LOCAL_OCR_MODEL_DIR", BASE_DIR / "ocr-models"))
+LOCAL_OCR_ENABLED = os.environ.get("LOCAL_OCR_ENABLED", "1") == "1"
 LOCAL_OCR_DOWNLOAD_ENABLED = os.environ.get("LOCAL_OCR_DOWNLOAD_ENABLED", "1") == "1"
 HANDWRITING_IMAGE_MAX_BYTES = 6 * 1024 * 1024
+NOTEBOOK_COVER_UPLOAD_ENABLED = os.environ.get("NOTEBOOK_COVER_UPLOAD_ENABLED", "1") == "1"

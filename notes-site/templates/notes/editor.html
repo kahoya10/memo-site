@@ -5,7 +5,7 @@
 {% block content %}
 <section id="editorApp" class="editor-shell"
   data-save-url="{% url 'notes:page_save' current_page.id %}"
-  data-recognize-url="{% url 'notes:page_recognize' current_page.id %}"
+  {% if local_ocr_enabled %}data-recognize-url="{% url 'notes:page_recognize' current_page.id %}"{% endif %}
   data-preferences-url="{% url 'notes:drawing_preferences_save' %}"
   data-previous-page-url="{% if previous_page %}{% url 'notes:page_editor' notebook.id previous_page.id %}{% endif %}"
   data-next-page-url="{% if next_page %}{% url 'notes:page_editor' notebook.id next_page.id %}{% endif %}"
@@ -69,7 +69,7 @@
       <a class="small-button" href="{% url 'notes:study' notebook.id %}">학습하기</a>
     </div>
     <div class="tool-row" role="toolbar" aria-label="필기 도구">
-      <button id="recognizeButton" class="tool accent" type="button">손글씨 자동 인식</button>
+      <button id="recognizeButton" class="tool accent" type="button">{% if local_ocr_enabled %}손글씨 자동 인식{% else %}필기 텍스트 편집{% endif %}</button>
       <div class="tool-family"><span class="tool-family-label">일반펜</span><div id="generalTools" class="tool-buttons"></div><button id="addToolButton" class="tool add-tool" type="button" aria-label="필기도구 추가">＋</button></div>
       <div class="tool-divider" aria-hidden="true"></div>
       <div class="tool-family"><span class="tool-family-label">학습펜</span><div id="studyTools" class="tool-buttons"></div></div>
@@ -102,7 +102,7 @@
 
     <div id="paperViewport" class="paper-stage" tabindex="0" role="region" aria-label="필기 화면">
       <div id="paperSizer" class="paper-sizer"><div id="paper" class="note-paper paper-{{ current_page.paper_template }}" data-template="{{ current_page.paper_template }}" style="--paper-image:url('{% url 'notes:page_paper' current_page.id %}')"><canvas id="inkCanvas" aria-label="손글씨 필기 영역"></canvas><div id="objectLayer" class="object-layer" aria-label="텍스트와 메모지 영역"></div></div></div>
-      <div id="selectionActions" class="selection-actions" hidden><span>선택 영역을 끌어 이동</span><button id="convertSelection" type="button">텍스트로 변환</button><button id="copySelection" type="button">복사</button><button id="deleteSelection" type="button">삭제</button><button id="clearSelection" type="button">해제</button></div>
+      <div id="selectionActions" class="selection-actions" hidden><span>선택 영역을 끌어 이동</span>{% if local_ocr_enabled %}<button id="convertSelection" type="button">텍스트로 변환</button>{% endif %}<button id="copySelection" type="button">복사</button><button id="deleteSelection" type="button">삭제</button><button id="clearSelection" type="button">해제</button></div>
     </div>
   </div>
 
@@ -162,15 +162,15 @@
   </dialog>
 
   <dialog id="recognitionDialog" class="recognition-dialog">
-    <form method="dialog" class="dialog-heading"><div><p class="eyebrow">손글씨 인식 검토</p><h2>검색·학습용 텍스트 확인</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
-    <p id="recognitionNotice" class="recognition-notice"><strong>서버 내부 손글씨 인식:</strong> 필기 이미지는 외부 AI 서비스로 전송되지 않습니다. 결과를 확인하고 필요한 부분을 고친 뒤 저장해 주세요.</p>
+    <form method="dialog" class="dialog-heading"><div>{% if local_ocr_enabled %}<p class="eyebrow">손글씨 인식 검토</p>{% endif %}<h2>검색·학습용 텍스트 {% if local_ocr_enabled %}확인{% else %}편집{% endif %}</h2></div><button class="icon-button" value="cancel" aria-label="닫기">×</button></form>
+    <p id="recognitionNotice" class="recognition-notice">{% if local_ocr_enabled %}<strong>서버 내부 손글씨 인식:</strong> 필기 이미지는 외부 AI 서비스로 전송되지 않습니다. 결과를 확인하고 필요한 부분을 고친 뒤 저장해 주세요.{% else %}검색과 학습에 사용할 텍스트를 직접 입력해 주세요.{% endif %}</p>
     <div class="recognition-grid">
       <section><h3>내 필기 원본</h3><div id="inkPreview" class="ink-preview"></div></section>
       <section><h3>인식 위치</h3><div id="recognitionPositions" class="ink-preview recognition-positions"></div></section>
     </div>
-    <label class="terms-field">인식된 내용 <textarea id="recognizedText" rows="5" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></label>
+    <label class="terms-field">{% if local_ocr_enabled %}인식된 내용{% else %}필기 내용{% endif %} <textarea id="recognizedText" rows="5" placeholder="검색과 학습에 사용할 필기 내용을 적어 주세요.">{{ current_page.recognized_text }}</textarea></label>
     <label class="terms-field">빈칸으로 만들 핵심어 <textarea id="quizTerms" rows="3" placeholder="예: 세종대왕, 훈민정음">{% for term in current_page.quiz_terms %}{{ term }}{% if not forloop.last %}, {% endif %}{% endfor %}</textarea></label>
-    <div class="dialog-actions"><button id="rerunRecognition" class="secondary-button" type="button">다시 인식</button><button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
+    <div class="dialog-actions">{% if local_ocr_enabled %}<button id="rerunRecognition" class="secondary-button" type="button">다시 인식</button>{% endif %}<button class="secondary-button" type="button" data-close-recognition>취소</button><button id="confirmRecognition" class="primary-button" type="button">확인하고 저장</button></div>
   </dialog>
 
   {% csrf_token %}

@@ -1,4 +1,5 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import UploadedFile
@@ -46,6 +47,10 @@ class InviteSignupForm(UserCreationForm):
 
 
 class NotebookCoverForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["cover_upload"].disabled = not settings.NOTEBOOK_COVER_UPLOAD_ENABLED
+
     class Meta:
         model = Notebook
         fields = ("cover_style", "cover_upload")

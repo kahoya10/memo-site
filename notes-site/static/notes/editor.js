@@ -193,7 +193,8 @@
   function updateSelectionUI() {
     const hasSelection = Boolean(selectionBounds());
     document.getElementById("selectionActions").hidden = !hasSelection;
-    document.getElementById("convertSelection").hidden = !selection?.strokeIds.length;
+    const convertSelection = document.getElementById("convertSelection");
+    if (convertSelection) convertSelection.hidden = !selection?.strokeIds.length;
     renderPaperObjects();
   }
 
@@ -981,7 +982,7 @@
     return result;
   }
 
-  document.getElementById("convertSelection").addEventListener("click", async event => {
+  document.getElementById("convertSelection")?.addEventListener("click", async event => {
     if (!selection?.strokeIds.length) return;
     const button = event.currentTarget;
     const {left, top, right, bottom} = selectionBounds();
@@ -1032,7 +1033,8 @@
   const recognitionCloseButtons = recognitionDialog.querySelectorAll('[value="cancel"], [data-close-recognition]');
 
   function updateRecognitionControls() {
-    rerunRecognition.disabled = confirmRecognition.disabled = Boolean(recognitionRequest) || savingRecognition;
+    confirmRecognition.disabled = Boolean(recognitionRequest) || savingRecognition;
+    if (rerunRecognition) rerunRecognition.disabled = confirmRecognition.disabled;
     recognizedInput.disabled = quizTermsInput.disabled = savingRecognition;
     recognitionCloseButtons.forEach(button => { button.disabled = savingRecognition; });
   }
@@ -1084,9 +1086,9 @@
     inkPreview.style.backgroundImage = `url(${imageData})`;
     showRecognitionPositions();
     recognitionDialog.showModal();
-    if (!recognitionDraft.blocks.length && !savedRecognition.text) runRecognition(imageData);
+    if (app.dataset.recognizeUrl && !recognitionDraft.blocks.length && !savedRecognition.text) runRecognition(imageData);
   });
-  rerunRecognition.addEventListener("click", () => runRecognition(recognitionImageData()));
+  rerunRecognition?.addEventListener("click", () => runRecognition(recognitionImageData()));
   document.querySelector("[data-close-recognition]").addEventListener("click", () => recognitionDialog.close());
   recognitionDialog.addEventListener("cancel", event => { if (savingRecognition) event.preventDefault(); });
   recognitionDialog.addEventListener("close", () => {

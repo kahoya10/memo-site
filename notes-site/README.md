@@ -16,6 +16,14 @@ py -3.13 manage.py runserver
 
 ## 공개 배포
 
+### Render 무료 플랜
+
+Render의 **New → Blueprint**에서 GitHub 저장소를 선택하면 루트의 `render.yaml`이 싱가포르 리전의 무료 웹 서비스를 설정합니다. `DJANGO_DATABASE_URL`에는 기존 Supabase Session pooler 주소를, `DJANGO_DATABASE_PASSWORD`에는 해당 DB 비밀번호를 입력합니다. 주소에는 비밀번호를 넣지 않습니다. Render가 Django 비밀 키와 기본 HTTPS 주소를 생성합니다.
+
+무료 서비스는 자동 손글씨 인식과 PNG 공책 표지 업로드를 끕니다. 기본 표지, 필기, 수동 텍스트 편집, 계정과 공부 기록은 계속 사용할 수 있습니다. 접속이 없으면 서비스가 잠들며 다음 접속 때 다시 시작합니다.
+
+### Docker 배포
+
 `notes-site/Dockerfile`을 사용하는 Docker 웹 서비스로 실행합니다. Django의 로그인과 계정별 데이터는 기존 Supabase PostgreSQL을 사용합니다. 웹 서비스 앞의 프록시는 HTTPS를 제공하고 요청의 `X-Forwarded-Proto`를 설정해야 합니다.
 
 | 서버 환경 변수 | 값 |
@@ -37,7 +45,7 @@ docker run --rm --env-file path/to/server.env sapgu python manage.py verify_depl
 docker run --rm --env-file path/to/server.env -p 8000:8000 -v sapgu-data:/var/lib/sapgu sapgu
 ```
 
-호스팅 서비스가 `PORT`를 제공하면 Gunicorn이 그 포트에서 실행합니다. 상태 확인 경로는 `/healthz/`입니다. 배포 전 같은 DB에서 `python manage.py changepassword demo`로 기존 데모 계정 비밀번호를 바꾸고, `python manage.py createsuperuser`로 관리자를 만든 뒤 `/admin/`의 초대 코드 목록에서 공개된 데모 코드를 비활성화합니다. `verify_deployment`는 이 조건, 마이그레이션 여부, 정적 파일을 확인합니다.
+호스팅 서비스가 `PORT`를 제공하면 Gunicorn이 그 포트에서 실행합니다. 상태 확인 경로는 `/healthz/`입니다. 공개 배포에는 활성 관리자 계정이 필요합니다. 기존 데모 계정이 있다면 삭제하거나 비활성화하고, `/admin/`의 초대 코드 목록에서 공개된 데모 코드를 비활성화합니다. `verify_deployment`는 계정과 초대 코드, 마이그레이션, 정적 파일을 확인합니다.
 
 읽기 전용 점검 외의 테스트는 Supabase 접속 주소를 제외하고 로컬 테스트 DB에서 실행합니다.
 

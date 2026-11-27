@@ -11,9 +11,9 @@
     {% endfor %}
   </div>
 </fieldset>
-<div class="cover-upload-field">
+{% if not form.cover_upload.field.disabled %}<div class="cover-upload-field">
   <label for="{{ form.cover_upload.id_for_label }}">{{ form.cover_upload.label }}</label>
   <div>{{ form.cover_upload }}</div>
   {{ form.cover_upload.errors }}
   <small>PNG 파일 · 최대 5MB · 업로드한 이미지를 표지로 사용합니다.</small>
-</div>
+</div>{% endif %}

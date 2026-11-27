@@ -360,6 +360,7 @@ def editor(request, notebook_id, page_id=None):
             "notebook": notebook,
             "chapters": chapters,
             "current_page": page,
+            "local_ocr_enabled": settings.LOCAL_OCR_ENABLED,
             "drawing_preferences": {
                 "tools": normalized_tools,
                 "palettes": drawing_preferences.palettes,
@@ -689,6 +690,8 @@ def recognize_handwriting_image(image_bytes, samples=(), allow_single_glyph=Fals
 @require_POST
 def page_recognize(request, page_id):
     page = get_object_or_404(Page.objects.defer("paper_image"), pk=page_id, chapter__notebook__owner=request.user)
+    if not settings.LOCAL_OCR_ENABLED:
+        return JsonResponse({"ok": False, "error": "이 배포에서는 자동 손글씨 인식을 사용할 수 없어요."}, status=503)
     try:
         payload = json.loads(request.body)
     except (json.JSONDecodeError, UnicodeDecodeError):

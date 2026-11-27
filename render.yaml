@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: sapgu-seodang
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: notes-site
+    buildCommand: pip install -r requirements-web.txt && python manage.py collectstatic --noinput
+    startCommand: sh ./start.sh
+    healthCheckPath: /healthz/
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_BEHIND_HTTPS_PROXY
+        value: "1"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_DATABASE_URL
+        sync: false
+      - key: DJANGO_DATABASE_PASSWORD
+        sync: false
+      - key: LOCAL_OCR_ENABLED
+        value: "0"
+      - key: NOTEBOOK_COVER_UPLOAD_ENABLED
+        value: "0"
+      - key: WEB_CONCURRENCY
+        value: "1"
