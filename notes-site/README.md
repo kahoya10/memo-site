@@ -16,6 +16,14 @@ py -3.13 manage.py runserver
 
 ## 공개 배포
 
+### GitHub Pages와 Supabase
+
+`cloud/`의 공책 목록과 편집기는 Supabase Auth와 Data API를 사용합니다. 로그인한 계정에는 초대 코드를 등록해야 공책과 타이머 기록을 저장할 수 있습니다. `supabase/001_pages.sql`은 새 테이블과 계정별 접근 정책을 추가합니다. Django의 `sapgu` 데이터와 로그인은 계속 별도로 동작합니다.
+
+`cloud/config.js`에는 프로젝트 URL과 Publishable key를 설정합니다. Supabase Auth의 Redirect URLs에는 사이트의 `cloud/index.html` 주소를 추가합니다. 관리자 계정이 이메일로 로그인하고 최초 관리자 초대 코드를 사용하면 이후 초대 코드를 만들 수 있습니다. 내장 Auth 메일 서비스는 프로젝트 팀 이메일로만 전송되므로 학교 친구의 이메일 가입에는 별도 SMTP 설정이 필요합니다.
+
+편집기, 학습, 정리 템플릿을 변경했다면 저장소에서 `python notes-site/build_pages.py`를 실행해 `cloud/`의 HTML도 다시 생성합니다. 클라우드 편집기에서는 손글씨 원본과 검색용 직접 입력을 저장하며, Python 자동 인식은 Django 버전에서 실행됩니다.
+
 ### Render 무료 플랜
 
 Render의 **New → Blueprint**에서 GitHub 저장소를 선택하면 루트의 `render.yaml`이 싱가포르 리전의 무료 웹 서비스를 설정합니다. `DJANGO_DATABASE_URL`에는 기존 Supabase Session pooler 주소를, `DJANGO_DATABASE_PASSWORD`에는 해당 DB 비밀번호를 입력합니다. 주소에는 비밀번호를 넣지 않습니다. Render가 Django 비밀 키와 기본 HTTPS 주소를 생성합니다.

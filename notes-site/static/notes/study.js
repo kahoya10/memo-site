@@ -183,10 +183,14 @@
     byId("saveQuiz").hidden = true;
     byId("reloadQuiz").disabled = true;
     try {
-      const response = await fetch(app.dataset.saveUrl, {method: "POST", headers: {
-        "Content-Type": "application/json", "X-CSRFToken": app.querySelector("[name=csrfmiddlewaretoken]").value,
-      }, body: JSON.stringify(pending)});
-      if (!response.ok) throw new Error();
+      if (window.sapguSaveQuiz) {
+        await window.sapguSaveQuiz(pending);
+      } else {
+        const response = await fetch(app.dataset.saveUrl, {method: "POST", headers: {
+          "Content-Type": "application/json", "X-CSRFToken": app.querySelector("[name=csrfmiddlewaretoken]").value,
+        }, body: JSON.stringify(pending)});
+        if (!response.ok) throw new Error();
+      }
       message.textContent += " 학습 기록에 저장했어요.";
       const line = document.createElement("p");
       line.textContent = pending.results.filter(item => item.correct).length + "/" + pending.results.length + " · " + pending.duration + "초 · 방금 저장";

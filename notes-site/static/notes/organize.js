@@ -233,12 +233,18 @@
     const submit = form.querySelector("button[type=submit]");
     submit.disabled = true;
     try {
-      const response = await fetch(app.dataset.url, {
-        method: "POST", headers: {"Content-Type": "application/json", "X-CSRFToken": form.elements.csrfmiddlewaretoken.value},
-        body: JSON.stringify({id: app.dataset.view, kind: app.dataset.kind, name: document.getElementById("viewName").value, unit: unit.value, items}),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error);
+      const payload = {id: app.dataset.view, kind: app.dataset.kind, name: document.getElementById("viewName").value, unit: unit.value, items};
+      let result;
+      if (window.sapguSaveView) {
+        result = await window.sapguSaveView(payload);
+      } else {
+        const response = await fetch(app.dataset.url, {
+          method: "POST", headers: {"Content-Type": "application/json", "X-CSRFToken": form.elements.csrfmiddlewaretoken.value},
+          body: JSON.stringify(payload),
+        });
+        result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+      }
       dirty = false;
       location.href = result.url;
     } catch (error) { status.textContent = error.message || "저장에 실패했어요."; }

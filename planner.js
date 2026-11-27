@@ -122,9 +122,10 @@ let pendingTimeBlock = null;
 const STUDY_API_URL = document.body.dataset.studyApi || "";
 const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
 const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
-const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+let STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
 const PLANNER_STAMP_URL = document.body.dataset.stampUrl || "./도장.png";
 let timerBlocksByDate = {};
+let cloudStudy = null;
 
 function blocksForDay(day, key) {
   return day.timeBlocks.concat(timerBlocksByDate[key] || []);
@@ -164,7 +165,7 @@ function timerSessionBlocks(session) {
 }
 
 async function flushPendingTimerSessions() {
-  if (!STUDY_API_URL) return;
+  if (!STUDY_API_URL && !cloudStudy) return;
   let queue;
   try {
     queue = JSON.parse(window.localStorage.getItem(STUDY_QUEUE_KEY) || "[]");
@@ -172,13 +173,15 @@ async function flushPendingTimerSessions() {
   } catch (error) { queue = []; }
   while (queue.length) {
     try {
-      const response = await window.fetch(STUDY_API_URL, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
-        body: JSON.stringify(queue[0]),
-      });
-      if (!response.ok) break;
+      if (cloudStudy) await cloudStudy.save(queue[0]);
+      else {
+        const response = await window.fetch(STUDY_API_URL, {
+          method: "POST", credentials: "same-origin",
+          headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
+          body: JSON.stringify(queue[0]),
+        });
+        if (!response.ok) break;
+      }
       queue.shift();
       window.localStorage.setItem(STUDY_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) { break; }
@@ -186,14 +189,24 @@ async function flushPendingTimerSessions() {
 }
 
 async function loadTimerBlocks() {
-  if (!STUDY_API_URL) return;
   try {
+    if (!STUDY_API_URL) {
+      if (location.protocol === "file:") return;
+      const module = await import("./cloud/sessions.js");
+      cloudStudy = await module.sessionStore();
+      if (!cloudStudy) return;
+      STUDY_QUEUE_KEY = `sapgu-study-session-queue-${cloudStudy.userId}`;
+    }
     await flushPendingTimerSessions();
-    const response = await window.fetch(STUDY_API_URL, { credentials: "same-origin" });
-    if (!response.ok) throw new Error("study sessions unavailable");
-    const payload = await response.json();
+    let sessions;
+    if (cloudStudy) sessions = await cloudStudy.list();
+    else {
+      const response = await window.fetch(STUDY_API_URL, { credentials: "same-origin" });
+      if (!response.ok) throw new Error("study sessions unavailable");
+      ({sessions} = await response.json());
+    }
     const next = {};
-    (payload.sessions || []).flatMap(timerSessionBlocks).forEach(function(block) {
+    (sessions || []).flatMap(timerSessionBlocks).forEach(function(block) {
       if (!next[block.date]) next[block.date] = [];
       next[block.date].push(block);
     });

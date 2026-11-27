@@ -1,6 +1,7 @@
 (() => {
   const app = document.getElementById("editorApp");
   if (!app) return;
+  const transport = window.sapguEditorTransport;
 
   const canvas = document.getElementById("inkCanvas");
   const paper = document.getElementById("paper");
@@ -45,6 +46,8 @@
   let saveTimer = null;
   let preferenceTimer = null;
   let pendingSave = Promise.resolve(true);
+  let pageRevision = 0;
+  let savedRevision = 0;
   let zoom = 1;
   let basePaperWidth = 794;
   let viewFit = "width";
@@ -268,6 +271,7 @@
   window.addEventListener("pointerup", () => { if (objectDrag) { objectDrag = null; markChanged(); } });
 
   function markChanged() {
+    pageRevision += 1;
     document.getElementById("saveStatus").textContent = "저장 대기";
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => savePage(), 850);
@@ -441,10 +445,15 @@
 
   async function savePreferences() {
     try {
+      const current = {tools, palettes, active_palette: activePaletteId, eraser_mode: eraserMode, palm_rejection: palmMode};
+      if (transport) {
+        await transport.savePreferences(current);
+        return;
+      }
       const response = await fetch(app.dataset.preferencesUrl, {
         method: "POST",
         headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
-        body: JSON.stringify({tools, palettes, active_palette: activePaletteId, eraser_mode: eraserMode, palm_rejection: palmMode}),
+        body: JSON.stringify(current),
       });
       if (!response.ok) throw new Error("preferences failed");
     } catch (error) {
@@ -896,7 +905,7 @@
       paperTemplatesDialog.showModal();
       paperTemplatesDialog.querySelector('[aria-pressed="true"]')?.focus();
     });
-    uploadForm.addEventListener("submit", async event => {
+    if (!transport) uploadForm.addEventListener("submit", async event => {
       event.preventDefault();
       const button = uploadForm.querySelector("button");
       button.disabled = true;
@@ -1117,6 +1126,7 @@
   function savePage(review = null) {
     clearTimeout(saveTimer);
     saveTimer = null;
+    if (review) pageRevision += 1;
     pendingSave = pendingSave.then(() => persistPage(review));
     return pendingSave;
   }
@@ -1125,23 +1135,32 @@
     const saved = await (saveTimer ? savePage() : pendingSave);
     return saved || savePage();
   }
+  if (transport) transport.flushPage = flushPage;
 
   async function persistPage(review) {
     const status = document.getElementById("saveStatus"); status.textContent = "저장 중…";
+    const revision = pageRevision;
     try {
-      const response = await fetch(app.dataset.saveUrl, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
-        body: JSON.stringify({
-          title: document.getElementById("pageTitle").value,
-          ink_data: strokes, text_boxes: textBoxes, sticky_notes: stickyNotes, text_content: "",
-          paper_template: paper.dataset.template,
-          ...review,
-        }),
-      });
-      if (!response.ok) throw new Error("save failed");
-      const saved = await response.json();
-      status.textContent = "저장됨";
+      const current = {
+        title: document.getElementById("pageTitle").value,
+        ink_data: strokes, text_boxes: textBoxes, sticky_notes: stickyNotes, text_content: "",
+        paper_template: paper.dataset.template,
+        ...review,
+      };
+      let saved;
+      if (transport) {
+        saved = await transport.savePage(current);
+      } else {
+        const response = await fetch(app.dataset.saveUrl, {
+          method: "POST",
+          headers: {"Content-Type": "application/json", "X-CSRFToken": csrf},
+          body: JSON.stringify(current),
+        });
+        if (!response.ok) throw new Error("save failed");
+        saved = await response.json();
+      }
+      savedRevision = revision;
+      status.textContent = savedRevision === pageRevision ? "저장됨" : "저장 대기 중…";
       return saved;
     } catch (error) {
       status.textContent = "저장 실패 · 다시 시도";
@@ -1160,7 +1179,11 @@
   });
   window.addEventListener("keyup", event => { if (event.code === "Space") { spacePressed = false; updatePanCursor(); } });
   window.addEventListener("blur", () => { spacePressed = false; updatePanCursor(); });
-  window.addEventListener("beforeunload", () => { if (saveTimer) savePage(); if (preferenceTimer) savePreferences(); });
+  window.addEventListener("beforeunload", event => {
+    if (saveTimer) savePage();
+    if (preferenceTimer) savePreferences();
+    if (transport && pageRevision !== savedRevision) event.preventDefault();
+  });
 
   document.querySelectorAll(".chapter-toggle").forEach(button => {
     button.addEventListener("click", () => {

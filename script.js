@@ -89,9 +89,18 @@ const state = {
 const STUDY_API_URL = document.body.dataset.studyApi || "";
 const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
 const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
-const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+let STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
 const STUDY_ASSET_BASE = document.body.dataset.assetBase || "";
 let studySegment = null;
+let cloudStudy = null;
+if (!STUDY_API_URL && location.protocol !== "file:") {
+  import("./cloud/sessions.js").then(module => module.sessionStore()).then(store => {
+    if (!store) return;
+    cloudStudy = store;
+    STUDY_QUEUE_KEY = `sapgu-study-session-queue-${store.userId}`;
+    flushStudyQueue();
+  }).catch(() => {});
+}
 
 function studyRecordId() {
   return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -109,21 +118,22 @@ function saveStudyQueue(queue) {
 }
 
 async function flushStudyQueue() {
-  if (!STUDY_API_URL || flushStudyQueue.running) return;
+  if ((!STUDY_API_URL && !cloudStudy) || flushStudyQueue.running) return;
   flushStudyQueue.running = true;
   const queue = loadStudyQueue();
   while (queue.length) {
     try {
-      const response = await window.fetch(STUDY_API_URL, {
-        method: "POST",
-        credentials: "same-origin",
-        keepalive: true,
-        headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
-        body: JSON.stringify(queue[0]),
-      });
-      if (!response.ok) break;
-      queue.shift();
-      saveStudyQueue(queue);
+      const record = queue.shift();
+      if (cloudStudy) await cloudStudy.save(record);
+      else {
+        const response = await window.fetch(STUDY_API_URL, {
+          method: "POST", credentials: "same-origin", keepalive: true,
+          headers: { "Content-Type": "application/json", "X-CSRFToken": STUDY_CSRF_TOKEN },
+          body: JSON.stringify(record),
+        });
+        if (!response.ok) break;
+      }
+      saveStudyQueue(loadStudyQueue().filter(item => item.client_id !== record.client_id));
     } catch (error) { break; }
   }
   flushStudyQueue.running = false;
@@ -143,7 +153,7 @@ function currentStudySubject() {
 
 function beginStudySegment() {
   const subject = currentStudySubject();
-  if (!STUDY_API_URL || !subject) { studySegment = null; return; }
+  if ((!STUDY_API_URL && !cloudStudy) || !subject) { studySegment = null; return; }
   studySegment = {
     clientId: studyRecordId(),
     subject,
