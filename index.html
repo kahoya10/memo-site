@@ -11,7 +11,7 @@
       window.location.replace("http://127.0.0.1:8000/");
     }
   </script>
-  <link rel="stylesheet" href="./main.css?v=20261123-8" />
+  <link rel="stylesheet" href="./main.css?v=pages-notes-1" />
 </head>
 <body data-profile-user="local">
   <main class="shell">
@@ -43,7 +43,7 @@
       </div>
 
       <div class="feature-grid" aria-label="주요 기능">
-        <a class="feature-card image-feature-card calendar-card" href="http://127.0.0.1:8000/planner/" aria-label="캘린더 열기">
+        <a class="feature-card image-feature-card calendar-card" href="./planner.html" aria-label="캘린더 열기">
           <img class="feature-card-image" src="./icon-calendar-transparent.png" alt="달력" />
           <span class="sr-only" id="calendarMeta"></span>
         </a>
@@ -51,7 +51,7 @@
           <img class="feature-card-image" src="./icon-timer-transparent.png" alt="모래시계" />
           <span class="sr-only" id="scheduleMeta"></span>
         </a>
-        <a class="feature-card image-feature-card notes-card" href="http://127.0.0.1:8000/notes/" aria-label="나의 필기 열기">
+        <a class="feature-card image-feature-card notes-card" href="#notes" aria-label="나의 필기 열기">
           <img class="feature-card-image" src="./icon-notes-transparent.png" alt="붓글씨 메모" />
           <span class="sr-only" id="notesMeta"></span>
         </a>
@@ -72,6 +72,7 @@
     </section>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="./app.js?v=20261123-1"></script>
+  <script src="./notes-site/static/notes/page-ink.js"></script>
+  <script src="./app.js?v=pages-notes-1"></script>
 </body>
 </html>

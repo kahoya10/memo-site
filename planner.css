@@ -2796,3 +2796,4 @@ html:has(.planner-shell),body:has(.planner-shell){overflow:hidden}
     box-sizing:border-box!important;
   }
 }
+.planner-home{display:inline-block;margin-bottom:10px;color:var(--deep);font-size:.82rem;font-weight:700}

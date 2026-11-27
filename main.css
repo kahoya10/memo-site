@@ -200,9 +200,14 @@ label > input, label > select, label > textarea { margin-top: 6px; }
 .folder-button span { color: var(--muted); font-size: .66rem; }
 .note-button strong, .note-button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .note-button small { margin-top: 4px; color: var(--muted); }
-.note-editor { display: grid; grid-template-rows: auto minmax(0,1fr) auto; gap: 10px; height: 100%; }
+.note-editor { display: grid; gap: 10px; align-content: start; }
 .note-title { height: auto; padding: 8px 3px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; font-size: 1.25rem; font-weight: 800; }
-.note-content { min-height: 0; border: 0; background: transparent; resize: none; }
+.note-content { min-height: 240px; border: 0; background: transparent; resize: vertical; }
+.note-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.note-tools [aria-pressed="true"] { color: #fff; background: var(--green); }
+.note-tools button:disabled { cursor: default; opacity: .5; }
+.note-ink-canvas { width: 100%; max-width: 640px; height: auto; aspect-ratio: 794 / 1123; border: 1px solid var(--line); border-radius: 12px; background: #fffefa; cursor: crosshair; touch-action: pan-y pinch-zoom; }
+.note-editor [hidden] { display: none; }
 .editor-status { display: flex; justify-content: space-between; color: var(--muted); font-size: .67rem; }
 .toast { position: fixed; right: 25px; bottom: 25px; z-index: 30; padding: 13px 17px; border-radius: 12px; color: #fff; background: #30332f; box-shadow: 0 10px 35px rgba(0,0,0,.2); font-size: .78rem; opacity: 0; transform: translateY(12px); pointer-events: none; transition: .2s; }
 .toast.is-showing { opacity: 1; transform: none; }
@@ -238,8 +243,9 @@ label > input, label > select, label > textarea { margin-top: 6px; }
   .wagging-dog { margin-right: auto; margin-left: auto; }
   .intro .line { margin-right: auto; margin-left: auto; }
   .workspace-grid, .schedule-layout { grid-template-columns: 1fr; height: auto; }
-  .notes-layout { grid-template-columns: 160px 220px minmax(300px,1fr); min-width: 720px; }
-  .notes-surface { overflow: auto; }
+  .notes-layout { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; }
+  .notes-column:not(#noteEditor) { max-height: 180px; }
+  #noteEditor { grid-column: 1 / -1; border-top: 1px solid var(--line); border-left: 0; }
   .auth-main-grid { grid-template-columns: 1fr; width: min(100%,470px); margin: 0 auto; }
   .auth-dog { display: none; }
 }
@@ -258,7 +264,7 @@ label > input, label > select, label > textarea { margin-top: 6px; }
   .overlay { padding: 0; }
   .workspace-panel { width: 100%; height: 100vh; border-radius: 0; }
   .panel-head, .panel-body { padding: 18px; }
-  .secondary-btn { display: none; }
+  .panel-actions .secondary-btn { display: none; }
   .day { min-height: 55px; padding: 5px; }
   .field-row { grid-template-columns: 1fr; }
 }

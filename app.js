@@ -45,8 +45,13 @@ const panelKicker = $("#panelKicker");
 const toast = $("#toast");
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    return false;
+  }
   updateMeta();
+  return true;
 }
 
 function showToast(message) {
@@ -77,7 +82,7 @@ function updateMeta() {
 function openWorkspace(type) {
   const names = {
     calendar: ["DAILY CALENDAR", "캘린더"], schedule: ["TO-DO LIST", "일정 정리표"],
-    reminders: ["UPCOMING", "미리 알림"], notes: ["MY ARCHIVE", "나의 노트"],
+    reminders: ["UPCOMING", "미리 알림"], notes: ["", "나의 필기"],
   };
   [panelKicker.textContent, panelTitle.textContent] = names[type];
   overlay.classList.add("is-open");
@@ -203,7 +208,7 @@ function renderNotes() {
   const folderNotes = state.notes.filter(note => note.folderId === activeFolder).sort((a,b) => b.updated.localeCompare(a.updated));
   if (!folderNotes.some(note => note.id === activeNote)) activeNote = folderNotes[0]?.id || null;
   panelBody.innerHTML = `
-    <section class="surface notes-surface" style="height:100%">
+    <section class="surface notes-surface">
       <div class="notes-layout">
         <aside class="notes-column"><div class="column-head"><h3>폴더</h3><button class="mini-add" id="addFolder" aria-label="폴더 추가">+</button></div><div id="folderList">${state.folders.map(folder => `<button class="folder-button ${folder.id === activeFolder ? "is-active" : ""}" data-folder="${folder.id}">${safeText(folder.name)}<span>${state.notes.filter(note => note.folderId === folder.id).length}</span></button>`).join("")}</div></aside>
         <aside class="notes-column"><div class="column-head"><h3>노트</h3><button class="mini-add" id="addNote" aria-label="노트 추가">+</button></div><div id="noteList">${folderNotes.length ? folderNotes.map(note => `<button class="note-button ${note.id === activeNote ? "is-active" : ""}" data-note="${note.id}"><strong>${safeText(note.title || "제목 없는 노트")}</strong><small>${safeText((note.content || "내용 없음").slice(0,28))}</small></button>`).join("") : `<div class="empty">노트가 없어요.</div>`}</div></aside>
@@ -220,22 +225,114 @@ function renderNotes() {
 function noteEditorMarkup() {
   const note = state.notes.find(item => item.id === activeNote);
   if (!note) return `<div class="empty">+ 버튼을 눌러 새 노트를 시작하세요.</div>`;
-  return `<div class="note-editor"><input class="note-title" id="noteTitle" maxlength="100" value="${safeText(note.title)}" placeholder="노트 제목"/><textarea class="note-content" id="noteContent" placeholder="생각을 자유롭게 적어보세요.">${safeText(note.content)}</textarea><div class="editor-status"><span id="saveStatus">자동 저장됨</span><button class="danger-btn" id="deleteNote">노트 삭제</button></div></div>`;
+  return `<div class="note-editor">
+    <input class="note-title" id="noteTitle" aria-label="노트 제목" maxlength="100" value="${safeText(note.title)}" placeholder="노트 제목"/>
+    <div class="note-tools" aria-label="노트 입력 방식">
+      <button class="secondary-btn" id="noteInkMode" type="button">손필기</button>
+      <button class="secondary-btn" id="noteTextMode" type="button">텍스트</button>
+      <button class="secondary-btn" id="undoNoteInk" type="button">획 되돌리기</button>
+    </div>
+    <textarea class="note-content" id="noteContent" aria-label="노트 내용" placeholder="생각을 자유롭게 적어보세요.">${safeText(note.content)}</textarea>
+    <canvas class="note-ink-canvas" id="noteInkCanvas" aria-label="마우스나 펜으로 손필기하는 영역"></canvas>
+    <div class="editor-status"><span id="saveStatus" role="status">브라우저에 저장</span><button class="danger-btn" id="deleteNote">노트 삭제</button></div>
+  </div>`;
 }
 
 function bindNoteEditor() {
   const title = $("#noteTitle"); if (!title) return;
   const content = $("#noteContent");
+  const note = state.notes.find(item => item.id === activeNote);
+  const status = $("#saveStatus");
+  function saveNote() {
+    clearTimeout(saveTimer);
+    note.updated = new Date().toISOString();
+    status.textContent = saveState() ? "자동 저장됨" : "브라우저에 저장하지 못했어요.";
+  }
   [title, content].forEach(input => input.addEventListener("input", () => {
-    const note = state.notes.find(item => item.id === activeNote);
-    note.title = title.value; note.content = content.value; note.updated = new Date().toISOString();
-    $("#saveStatus").textContent = "저장 중…"; clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { saveState(); $("#saveStatus").textContent = "자동 저장됨"; }, 450);
+    note.title = title.value;
+    note.content = content.value;
+    status.textContent = "저장 중…";
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveNote, 450);
   }));
+  bindNoteInk(note, content, saveNote);
   $("#deleteNote").addEventListener("click", () => {
     if (!confirm("이 노트를 삭제할까요?")) return;
     state.notes = state.notes.filter(note => note.id !== activeNote); activeNote = null; saveState(); renderNotes(); showToast("노트를 삭제했어요.");
   });
+}
+
+function bindNoteInk(note, content, saveNote) {
+  const canvas = $("#noteInkCanvas");
+  const inkMode = $("#noteInkMode");
+  const textMode = $("#noteTextMode");
+  const undo = $("#undoNoteInk");
+  const strokes = note.strokes ??= [];
+  let stroke = null;
+  let pointerId = null;
+  let frame = null;
+
+  function draw() {
+    if (frame !== null) return;
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      window.drawPageInk(canvas, stroke ? [...strokes, stroke] : strokes);
+    });
+  }
+
+  function setMode(ink) {
+    canvas.hidden = undo.hidden = !ink;
+    content.hidden = ink;
+    inkMode.setAttribute("aria-pressed", String(ink));
+    textMode.setAttribute("aria-pressed", String(!ink));
+    if (ink) draw();
+  }
+
+  function point(event) {
+    const rect = canvas.getBoundingClientRect();
+    return [(event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height]
+      .map(value => Math.round(Math.max(0, Math.min(1, value)) * 10000) / 10000);
+  }
+
+  inkMode.addEventListener("click", () => setMode(true));
+  textMode.addEventListener("click", () => setMode(false));
+  undo.disabled = !strokes.length;
+  undo.addEventListener("click", () => {
+    strokes.pop();
+    undo.disabled = !strokes.length;
+    draw();
+    saveNote();
+  });
+
+  canvas.addEventListener("pointerdown", event => {
+    if (pointerId !== null || event.button !== 0 || event.pointerType === "touch") return;
+    event.preventDefault();
+    canvas.setPointerCapture(event.pointerId);
+    pointerId = event.pointerId;
+    stroke = { tool: "pen", width: 3, points: [point(event)] };
+    draw();
+  });
+  canvas.addEventListener("pointermove", event => {
+    if (event.pointerId !== pointerId) return;
+    stroke.points.push(point(event));
+    draw();
+  });
+  canvas.addEventListener("pointerup", event => {
+    if (event.pointerId !== pointerId) return;
+    stroke.points.push(point(event));
+    strokes.push(stroke);
+    pointerId = null;
+    stroke = null;
+    undo.disabled = false;
+    draw();
+    saveNote();
+  });
+  canvas.addEventListener("lostpointercapture", event => {
+    if (event.pointerId !== pointerId) return;
+    pointerId = stroke = null;
+    draw();
+  });
+  setMode(strokes.length > 0 || !note.content);
 }
 
 function addFolder() {
@@ -311,4 +408,10 @@ overlay.addEventListener("click", event => { if (event.target === overlay) close
 document.addEventListener("keydown", event => { if (event.key === "Escape" && overlay.classList.contains("is-open")) closeWorkspace(); });
 window.addEventListener("beforeunload", saveState);
 updateMeta();
-if (["calendar","schedule","reminders","notes"].includes(location.hash.slice(1))) openWorkspace(location.hash.slice(1));
+function syncWorkspaceFromHash() {
+  const workspace = location.hash.slice(1);
+  if (["calendar", "schedule", "reminders", "notes"].includes(workspace)) openWorkspace(workspace);
+  else if (overlay.classList.contains("is-open")) closeWorkspace();
+}
+window.addEventListener("hashchange", syncWorkspaceFromHash);
+syncWorkspaceFromHash();
