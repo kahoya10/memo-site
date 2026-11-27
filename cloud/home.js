@@ -1,4 +1,4 @@
-import {loadSupabaseClient, value} from "./api.js";
+import {loadSupabaseClient, value} from "./api.js?v=account-1";
 
 const signIn = document.getElementById("homeSignIn");
 const signOut = document.getElementById("homeSignOut");

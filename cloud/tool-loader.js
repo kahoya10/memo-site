@@ -21,7 +21,7 @@
   }
 
   async function start() {
-    const {sessionStore} = await import("./sessions.js");
+    const {sessionStore} = await import("./sessions.js?v=account-1");
     const store = await sessionStore();
     if (!store) {
       location.replace(`./cloud/index.html?next=${encodeURIComponent(tool)}`);

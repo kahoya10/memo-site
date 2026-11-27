@@ -1,4 +1,4 @@
-import {loadSupabaseClient, value} from "./api.js";
+import {loadSupabaseClient, value} from "./api.js?v=account-1";
 
 export async function sessionStore() {
   const client = await loadSupabaseClient();
