@@ -6,6 +6,29 @@ export function supabaseClient() {
   return globalThis.supabase.createClient(supabaseUrl, supabasePublishableKey);
 }
 
+let loadedClient;
+
+export function loadSupabaseClient() {
+  if (!loadedClient) {
+    loadedClient = (async () => {
+      if (!supabaseUrl || !supabasePublishableKey) return supabaseClient();
+      if (!window.supabase) {
+        await new Promise((resolve, reject) => {
+          const sdk = document.createElement("script");
+          sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.93.3/dist/umd/supabase.js";
+          sdk.integrity = "sha384-+ZU0FLgmXrUNVwx4Nmuay6i8PA8Ouf1KPCdacpklfY0SOT3teDcnp9j74VIF2evS";
+          sdk.crossOrigin = "anonymous";
+          sdk.onload = resolve;
+          sdk.onerror = () => reject(new Error("로그인 서비스를 불러오지 못했어요. 새로고침해 주세요."));
+          document.head.append(sdk);
+        });
+      }
+      return supabaseClient();
+    })();
+  }
+  return loadedClient;
+}
+
 export async function value(query) {
   const {data, error} = await query;
   if (error) throw error;

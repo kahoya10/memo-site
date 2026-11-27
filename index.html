@@ -11,7 +11,7 @@
       window.location.replace("http://127.0.0.1:8000/");
     }
   </script>
-  <link rel="stylesheet" href="./main.css?v=pages-notes-1" />
+  <link rel="stylesheet" href="./main.css?v=pages-login-1" />
 </head>
 <body data-profile-user="local">
   <main class="shell">
@@ -23,6 +23,10 @@
       </div>
       <div class="topbar-actions">
         <div class="today-chip" id="todayChip"></div>
+        <a class="logout-button" id="homeSignIn" href="./cloud/index.html?next=home">로그인</a>
+        <span class="account-name" id="homeAccount" hidden></span>
+        <button class="logout-button" id="homeSignOut" type="button" hidden>로그아웃</button>
+        <span class="sr-only" id="homeAuthStatus" role="status"></span>
         <label class="profile-avatar" id="profileAvatar">
           <input id="profileAvatarInput" type="file" accept="image/*" />
           <img id="profileAvatarPreview" alt="" />
@@ -74,5 +78,6 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <script src="./notes-site/static/notes/page-ink.js"></script>
   <script src="./app.js?v=pages-notes-1"></script>
+  <script type="module" src="./cloud/home.js"></script>
 </body>
 </html>

@@ -12,6 +12,8 @@ const colors = {
 let client;
 let editing = null;
 let coverUrls = [];
+const nextPage = new Map([["home", "../index.html"], ["timer", "../timer.html"], ["planner", "../planner.html"]])
+  .get(new URLSearchParams(location.search).get("next"));
 
 for (const [style, name] of Object.entries(colors)) {
   const option = document.createElement("label");
@@ -95,6 +97,10 @@ async function showAccount() {
   const member = await value(client.from("sapgu_members").select("is_admin").maybeSingle());
   byId("invitePanel").hidden = Boolean(member);
   if (!member) return;
+  if (nextPage) {
+    location.replace(nextPage);
+    return;
+  }
   byId("inviteButton").hidden = !member.is_admin;
   document.querySelector("#libraryActions [data-open-notebook]").hidden = false;
   byId("library").hidden = false;

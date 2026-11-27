@@ -76,7 +76,7 @@ svg { width: 1.3em; fill: none; stroke: currentColor; stroke-linecap: round; str
 .profile-avatar.has-image .profile-avatar-initial { display: none; }
 .profile-avatar-initial { color: var(--green); font-size: .88rem; font-weight: 900; }
 .account-name { color: var(--muted); font-size: .76rem; font-weight: 700; }
-.logout-button { padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.5); font-size: .72rem; font-weight: 700; }
+.logout-button { padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: rgba(255,255,255,.5); font-size: .72rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
 .logout-button:hover { color: var(--ink); background: rgba(255,255,255,.85); }
 .hero { display: grid; grid-template-columns: .75fr 1.25fr; gap: clamp(36px, 5vw, 80px); align-items: center; min-height: calc(100vh - 150px); padding: 70px 0; }
 .intro { transform: translateY(-42px); }

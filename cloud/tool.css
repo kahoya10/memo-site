@@ -1,0 +1,2 @@
+main[hidden], #toolAuthStatus[hidden] { display: none !important; }
+#toolAuthStatus { padding: 1rem; text-align: center; }

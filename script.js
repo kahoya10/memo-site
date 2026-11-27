@@ -89,18 +89,10 @@ const state = {
 const STUDY_API_URL = document.body.dataset.studyApi || "";
 const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
 const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
-let STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
 const STUDY_ASSET_BASE = document.body.dataset.assetBase || "";
 let studySegment = null;
-let cloudStudy = null;
-if (!STUDY_API_URL && location.protocol !== "file:") {
-  import("./cloud/sessions.js").then(module => module.sessionStore()).then(store => {
-    if (!store) return;
-    cloudStudy = store;
-    STUDY_QUEUE_KEY = `sapgu-study-session-queue-${store.userId}`;
-    flushStudyQueue();
-  }).catch(() => {});
-}
+const cloudStudy = window.sapguStudyStore;
 
 function studyRecordId() {
   return window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -298,8 +290,9 @@ function createMiniTimer() {
   renderMiniTimer(mini);
 }
 
-const DAILY_TOTAL_KEY = "seodanggae-daily-timer";
-const QUICK_PRESET_KEY = "seodanggae-quick-presets";
+const storageScope = document.body.dataset.userId ? `:${STUDY_USER_ID}` : "";
+const DAILY_TOTAL_KEY = `seodanggae-daily-timer${storageScope}`;
+const QUICK_PRESET_KEY = `seodanggae-quick-presets${storageScope}`;
 let quickPresets = loadQuickPresets();
 
 function loadQuickPresets() {

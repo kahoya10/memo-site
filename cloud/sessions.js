@@ -1,26 +1,18 @@
-import {supabaseUrl, supabasePublishableKey} from "./config.js";
-import {supabaseClient, value} from "./api.js";
+import {loadSupabaseClient, value} from "./api.js";
 
 export async function sessionStore() {
-  if (!supabaseUrl || !supabasePublishableKey) return null;
-  if (!window.supabase) {
-    await new Promise((resolve, reject) => {
-      const sdk = document.createElement("script");
-      sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.93.3/dist/umd/supabase.js";
-      sdk.integrity = "sha384-+ZU0FLgmXrUNVwx4Nmuay6i8PA8Ouf1KPCdacpklfY0SOT3teDcnp9j74VIF2evS";
-      sdk.crossOrigin = "anonymous";
-      sdk.onload = resolve;
-      sdk.onerror = reject;
-      document.head.append(sdk);
-    });
-  }
-  const client = supabaseClient();
+  const client = await loadSupabaseClient();
   const {session} = await value(client.auth.getSession());
   if (!session) return null;
   const member = await value(client.from("sapgu_members").select("user_id").maybeSingle());
   if (!member) return null;
   return {
     userId: member.user_id,
+    watchAccount(onChange) {
+      client.auth.onAuthStateChange((_event, current) => {
+        if (current?.user.id !== member.user_id) onChange();
+      });
+    },
     async save(record) {
       await value(client.from("sapgu_study_sessions").upsert({...record, owner_id: member.user_id},
         {onConflict: "owner_id,client_id", ignoreDuplicates: true}));

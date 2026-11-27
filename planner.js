@@ -8,8 +8,10 @@ const SUBJECTS = {
 };
 const SUBJECT_KEYS = Object.keys(SUBJECTS);
 const WEEKDAYS = ["월", "화", "수", "목", "금", "토", "일"];
-const STORAGE_KEY = "steady-planner-rebuild-v1";
-const PLANNER_INK_STORAGE_KEY = "steady-planner-ink-v1";
+const accountId = document.body.dataset.userId;
+const storageScope = accountId ? `:${accountId}` : "";
+const STORAGE_KEY = `steady-planner-rebuild-v1${storageScope}`;
+const PLANNER_INK_STORAGE_KEY = `steady-planner-ink-v1${storageScope}`;
 const DRAG_MINUTE_UNIT = 5;
 
 const PLANNER_INK_PALETTES = {
@@ -121,11 +123,10 @@ if (!state.periodMemos || typeof state.periodMemos !== "object") state.periodMem
 let pendingTimeBlock = null;
 const STUDY_API_URL = document.body.dataset.studyApi || "";
 const STUDY_CSRF_TOKEN = document.body.dataset.csrfToken || "";
-const STUDY_USER_ID = document.body.dataset.userId || "anonymous";
-let STUDY_QUEUE_KEY = `sapgu-study-session-queue-${STUDY_USER_ID}`;
+const STUDY_QUEUE_KEY = `sapgu-study-session-queue-${accountId || "anonymous"}`;
 const PLANNER_STAMP_URL = document.body.dataset.stampUrl || "./도장.png";
 let timerBlocksByDate = {};
-let cloudStudy = null;
+const cloudStudy = window.sapguStudyStore;
 
 function blocksForDay(day, key) {
   return day.timeBlocks.concat(timerBlocksByDate[key] || []);
@@ -189,14 +190,8 @@ async function flushPendingTimerSessions() {
 }
 
 async function loadTimerBlocks() {
+  if (!STUDY_API_URL && !cloudStudy) return;
   try {
-    if (!STUDY_API_URL) {
-      if (location.protocol === "file:") return;
-      const module = await import("./cloud/sessions.js");
-      cloudStudy = await module.sessionStore();
-      if (!cloudStudy) return;
-      STUDY_QUEUE_KEY = `sapgu-study-session-queue-${cloudStudy.userId}`;
-    }
     await flushPendingTimerSessions();
     let sessions;
     if (cloudStudy) sessions = await cloudStudy.list();

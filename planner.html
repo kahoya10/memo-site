@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>스테디 플래너</title>
     <link rel="stylesheet" href="planner.css?v=pages-return-1" />
+    <link rel="stylesheet" href="./cloud/tool.css" />
   </head>
-  <body>
-    <main class="planner-shell">
+  <body data-tool="planner" data-tool-script="./planner.js?v=account-1">
+    <p id="toolAuthStatus" role="status">로그인을 확인하는 중…</p>
+    <main class="planner-shell" hidden>
       <a class="planner-home" href="./index.html">← 시작 화면</a>
       <header class="planner-header">
         <div>
@@ -124,6 +126,6 @@
         </div>
       </dialog>
     </main>
-    <script src="planner.js?v=rebuild-10"></script>
+    <script src="./cloud/tool-loader.js"></script>
   </body>
 </html>
