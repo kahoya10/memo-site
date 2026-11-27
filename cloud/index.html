@@ -22,7 +22,7 @@
 
     <section class="empty-state" id="signInPanel" hidden>
       <h2>로그인</h2>
-      <form id="accountForm" class="stack-form">
+      <form id="accountForm" class="stack-form" method="post">
         <label>이메일 <input name="email" type="email" autocomplete="username" required></label>
         <label>비밀번호 <input name="password" type="password" autocomplete="current-password" required></label>
         <button class="primary-button" name="action" value="signin" type="submit">로그인</button>
@@ -32,7 +32,7 @@
 
     <section class="empty-state" id="invitePanel" hidden>
       <h2>초대 코드 입력</h2>
-      <form id="inviteForm" class="stack-form">
+      <form id="inviteForm" class="stack-form" method="post">
         <label>초대 코드 <input name="code" required maxlength="36" autocomplete="off"></label>
         <button class="primary-button" type="submit">공책 열기</button>
       </form>
